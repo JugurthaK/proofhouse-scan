@@ -4,7 +4,7 @@ import {
   openDb,
   repos,
   type Finding,
-} from "@maltify/core";
+} from "@proofhouse-scan/core";
 import type { Command } from "commander";
 import { and, desc, eq, sql, type SQL } from "drizzle-orm";
 

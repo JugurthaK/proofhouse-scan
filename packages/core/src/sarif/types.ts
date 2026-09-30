@@ -1,4 +1,4 @@
-// Minimal SARIF 2.1.0 shapes — only the fields maltify reads.
+// Minimal SARIF 2.1.0 shapes — only the fields proofhouse-scan reads.
 
 export interface SarifLog {
   version: string;

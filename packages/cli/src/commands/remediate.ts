@@ -1,11 +1,11 @@
-import { getConfig, openDb, remediateFinding } from "@maltify/core";
+import { getConfig, openDb, remediateFinding } from "@proofhouse-scan/core";
 import type { Command } from "commander";
 
 export function registerRemediateCommand(program: Command): void {
   program
     .command("remediate")
     .description("Generate a fix for a finding and open a PR on the target repo")
-    .argument("<finding-id>", "finding id (see maltify list)")
+    .argument("<finding-id>", "finding id (see proofhouse-scan list)")
     .action(async (findingId: string) => {
       const config = getConfig();
       const db = openDb(config.dbPath);

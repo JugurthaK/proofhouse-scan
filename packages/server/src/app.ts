@@ -1,6 +1,6 @@
 import fastifyCors from "@fastify/cors";
 import fastifyStatic from "@fastify/static";
-import { getLocalConfig, openDb, type Db } from "@maltify/core";
+import { getLocalConfig, openDb, type Db } from "@proofhouse-scan/core";
 import Fastify, { type FastifyInstance } from "fastify";
 import { timingSafeEqual } from "node:crypto";
 import { existsSync } from "node:fs";

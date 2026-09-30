@@ -1,4 +1,4 @@
-import { runScan, scans, type Db } from "@maltify/core";
+import { runScan, scans, type Db } from "@proofhouse-scan/core";
 import { desc, eq } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 

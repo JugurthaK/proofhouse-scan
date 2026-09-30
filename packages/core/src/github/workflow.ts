@@ -31,18 +31,18 @@ export async function dispatchScan(options: {
   onProgress?: (msg: string) => void;
 }): Promise<DispatchedRun> {
   const octokit = getOctokit();
-  const { maltifyOwner, maltifyRepo } = getConfig();
+  const { proofhouseScanOwner, proofhouseScanRepo } = getConfig();
   const correlationId = randomUUID();
   const progress = options.onProgress ?? (() => {});
 
   const { data: repoInfo } = await octokit.rest.repos.get({
-    owner: maltifyOwner,
-    repo: maltifyRepo,
+    owner: proofhouseScanOwner,
+    repo: proofhouseScanRepo,
   });
 
   await octokit.rest.actions.createWorkflowDispatch({
-    owner: maltifyOwner,
-    repo: maltifyRepo,
+    owner: proofhouseScanOwner,
+    repo: proofhouseScanRepo,
     workflow_id: WORKFLOW_FILE,
     ref: repoInfo.default_branch,
     inputs: {
@@ -58,8 +58,8 @@ export async function dispatchScan(options: {
   const deadline = Date.now() + 2 * 60 * 1000;
   while (Date.now() < deadline) {
     const { data } = await octokit.rest.actions.listWorkflowRuns({
-      owner: maltifyOwner,
-      repo: maltifyRepo,
+      owner: proofhouseScanOwner,
+      repo: proofhouseScanRepo,
       workflow_id: WORKFLOW_FILE,
       event: "workflow_dispatch",
       per_page: 20,
@@ -75,7 +75,7 @@ export async function dispatchScan(options: {
   }
   throw new Error(
     `Timed out finding the workflow run for correlation ${correlationId}. ` +
-      `Check that ${maltifyOwner}/${maltifyRepo} contains .github/workflows/${WORKFLOW_FILE}.`,
+      `Check that ${proofhouseScanOwner}/${proofhouseScanRepo} contains .github/workflows/${WORKFLOW_FILE}.`,
   );
 }
 
@@ -85,7 +85,7 @@ export async function waitForRun(
   options: { timeoutMs?: number; onProgress?: (msg: string) => void } = {},
 ): Promise<CompletedRun> {
   const octokit = getOctokit();
-  const { maltifyOwner, maltifyRepo } = getConfig();
+  const { proofhouseScanOwner, proofhouseScanRepo } = getConfig();
   const timeoutMs = options.timeoutMs ?? 30 * 60 * 1000;
   const progress = options.onProgress ?? (() => {});
   const deadline = Date.now() + timeoutMs;
@@ -93,8 +93,8 @@ export async function waitForRun(
 
   while (Date.now() < deadline) {
     const { data } = await octokit.rest.actions.getWorkflowRun({
-      owner: maltifyOwner,
-      repo: maltifyRepo,
+      owner: proofhouseScanOwner,
+      repo: proofhouseScanRepo,
       run_id: run.runId,
     });
     if (data.status !== lastStatus) {
@@ -115,13 +115,13 @@ export async function waitForRun(
  */
 export async function downloadArtifacts(runId: number): Promise<ArtifactContents> {
   const octokit = getOctokit();
-  const { maltifyOwner, maltifyRepo } = getConfig();
+  const { proofhouseScanOwner, proofhouseScanRepo } = getConfig();
 
   let artifacts: { id: number; name: string }[] = [];
   for (let attempt = 0; attempt < 6; attempt++) {
     const { data } = await octokit.rest.actions.listWorkflowRunArtifacts({
-      owner: maltifyOwner,
-      repo: maltifyRepo,
+      owner: proofhouseScanOwner,
+      repo: proofhouseScanRepo,
       run_id: runId,
       per_page: 50,
     });
@@ -133,8 +133,8 @@ export async function downloadArtifacts(runId: number): Promise<ArtifactContents
   const contents: ArtifactContents = {};
   for (const artifact of artifacts) {
     const { data } = await octokit.rest.actions.downloadArtifact({
-      owner: maltifyOwner,
-      repo: maltifyRepo,
+      owner: proofhouseScanOwner,
+      repo: proofhouseScanRepo,
       artifact_id: artifact.id,
       archive_format: "zip",
     });

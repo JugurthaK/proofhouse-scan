@@ -3,7 +3,7 @@ import {
   SCANNERS,
   type Db,
   type Scanner,
-} from "@maltify/core";
+} from "@proofhouse-scan/core";
 import type { FastifyInstance } from "fastify";
 
 interface IngestBody {

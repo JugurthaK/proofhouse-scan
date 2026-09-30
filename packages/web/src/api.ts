@@ -115,7 +115,7 @@ export interface TimelinePoint {
   countsOpen: number | null;
 }
 
-const TOKEN_KEY = "maltify_token";
+const TOKEN_KEY = "proofhouse_scan_token";
 
 export function getToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);

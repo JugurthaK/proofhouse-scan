@@ -1,6 +1,6 @@
 # Planted IaC findings: public S3 bucket without encryption or versioning
 resource "aws_s3_bucket" "data" {
-  bucket = "maltify-fixture-data"
+  bucket = "proofhouse-scan-fixture-data"
   acl    = "public-read"
 }
 

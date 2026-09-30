@@ -1,11 +1,11 @@
-import { getConfig, openDb, qualifyFinding } from "@maltify/core";
+import { getConfig, openDb, qualifyFinding } from "@proofhouse-scan/core";
 import type { Command } from "commander";
 
 export function registerQualifyCommand(program: Command): void {
   program
     .command("qualify")
     .description("Run LLM triage on a finding (true positive vs false positive)")
-    .argument("<finding-id>", "finding id (see maltify list)")
+    .argument("<finding-id>", "finding id (see proofhouse-scan list)")
     .action(async (findingId: string) => {
       const config = getConfig();
       const db = openDb(config.dbPath);

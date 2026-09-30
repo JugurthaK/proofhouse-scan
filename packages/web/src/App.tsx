@@ -11,7 +11,7 @@ export default function App() {
       <header className="border-b border-line bg-surface-1">
         <div className="mx-auto flex max-w-7xl items-center gap-6 px-6 py-3">
           <span className="text-lg font-semibold tracking-tight">
-            <span className="text-accent">mal</span>tify
+            <span className="text-accent">proofhouse</span>-scan
           </span>
           <nav className="flex gap-1">
             <NavLink to="/" end className={linkClass}>

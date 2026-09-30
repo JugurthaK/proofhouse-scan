@@ -1,15 +1,15 @@
-name: "maltify scan"
-description: "Run Opengrep (SAST), Trivy (SCA + IaC) and GitLeaks (secrets) on this repository and send the results to a maltify backend"
+name: "proofhouse-scan scan"
+description: "Run Opengrep (SAST), Trivy (SCA + IaC) and GitLeaks (secrets) on this repository and send the results to a proofhouse-scan backend"
 branding:
   icon: shield
   color: red
 
 inputs:
   api_url:
-    description: "Base URL of your maltify backend, e.g. https://maltify.example.com"
+    description: "Base URL of your proofhouse-scan backend, e.g. https://proofhouse-scan.example.com"
     required: true
   api_token:
-    description: "Ingest token (set MALTIFY_INGEST_TOKEN as a repo secret)"
+    description: "Ingest token (set PROOFHOUSE_SCAN_INGEST_TOKEN as a repo secret)"
     required: true
   scanners:
     description: "Comma-separated subset of: opengrep,trivy,gitleaks"
@@ -27,22 +27,22 @@ runs:
       shell: bash
       run: |
         if [ ! -e .git ]; then
-          echo "::error::maltify requires a checked-out repository — add actions/checkout before this action"
+          echo "::error::proofhouse-scan requires a checked-out repository — add actions/checkout before this action"
           exit 1
         fi
         if [ "$RUNNER_OS" != "Linux" ]; then
-          echo "::error::maltify requires a Linux runner (docker is used for GitLeaks)"
+          echo "::error::proofhouse-scan requires a Linux runner (docker is used for GitLeaks)"
           exit 1
         fi
         if [ "$(git rev-parse --is-shallow-repository)" = "true" ]; then
           echo "::warning::Shallow clone — GitLeaks cannot scan git history. Use actions/checkout with fetch-depth: 0"
         fi
-        if ! curl -fsS -m 10 "${MALTIFY_API_URL%/}/api/health" > /dev/null; then
-          echo "::error::maltify backend unreachable at $MALTIFY_API_URL"
+        if ! curl -fsS -m 10 "${PROOFHOUSE_SCAN_API_URL%/}/api/health" > /dev/null; then
+          echo "::error::proofhouse-scan backend unreachable at $PROOFHOUSE_SCAN_API_URL"
           exit 1
         fi
       env:
-        MALTIFY_API_URL: ${{ inputs.api_url }}
+        PROOFHOUSE_SCAN_API_URL: ${{ inputs.api_url }}
 
     - name: Opengrep SAST scan
       if: contains(inputs.scanners, 'opengrep')
@@ -72,11 +72,11 @@ runs:
           detect --source /repo --report-format sarif --report-path /out/gitleaks.sarif --exit-code 0
         [ -s "$RUNNER_TEMP/gitleaks.sarif" ] || echo '{"version":"2.1.0","runs":[]}' > "$RUNNER_TEMP/gitleaks.sarif"
 
-    - name: Send results to maltify
+    - name: Send results to proofhouse-scan
       shell: bash
       run: node "$GITHUB_ACTION_PATH/scripts/post.mjs"
       env:
-        MALTIFY_API_URL: ${{ inputs.api_url }}
-        MALTIFY_TOKEN: ${{ inputs.api_token }}
-        MALTIFY_SCANNERS: ${{ inputs.scanners }}
-        MALTIFY_FAIL_ON: ${{ inputs.fail_on }}
+        PROOFHOUSE_SCAN_API_URL: ${{ inputs.api_url }}
+        PROOFHOUSE_SCAN_TOKEN: ${{ inputs.api_token }}
+        PROOFHOUSE_SCAN_SCANNERS: ${{ inputs.scanners }}
+        PROOFHOUSE_SCAN_FAIL_ON: ${{ inputs.fail_on }}

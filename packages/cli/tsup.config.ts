@@ -6,5 +6,5 @@ export default defineConfig({
   target: "node22",
   clean: true,
   // Workspace packages export raw .ts — bundle them; real npm deps stay external.
-  noExternal: ["@maltify/core", "@maltify/server"],
+  noExternal: ["@proofhouse-scan/core", "@proofhouse-scan/server"],
 });

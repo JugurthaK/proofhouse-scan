@@ -1,4 +1,4 @@
-import { repos, scans, type Db } from "@maltify/core";
+import { repos, scans, type Db } from "@proofhouse-scan/core";
 import { desc, eq, sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 

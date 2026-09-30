@@ -7,7 +7,7 @@ import { registerReposCommand } from "./commands/repos.js";
 import { registerScanCommand } from "./commands/scan.js";
 import { registerServeCommand } from "./commands/serve.js";
 
-const program = new Command("maltify")
+const program = new Command("proofhouse-scan")
   .description(
     "Security scanning for GitHub repositories: SAST (Opengrep), IaC+SCA (Trivy), secrets (GitLeaks), with LLM-assisted triage and fix PRs",
   )

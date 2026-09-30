@@ -3,7 +3,7 @@ import {
   qualifyFinding,
   remediateFinding,
   type Db,
-} from "@maltify/core";
+} from "@proofhouse-scan/core";
 import { eq } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 

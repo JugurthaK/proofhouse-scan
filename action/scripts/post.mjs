@@ -1,20 +1,20 @@
 // Assembles the SARIF payload produced by the action's scanner steps and
-// POSTs it (gzipped) to the maltify backend. Configuration comes exclusively
+// POSTs it (gzipped) to the proofhouse-scan backend. Configuration comes exclusively
 // from environment variables so the token never appears in argv or logs.
 import { appendFileSync, existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { gzipSync } from "node:zlib";
 
-const apiUrl = (process.env.MALTIFY_API_URL ?? "").replace(/\/$/, "");
-const token = process.env.MALTIFY_TOKEN ?? "";
-const failOn = (process.env.MALTIFY_FAIL_ON ?? "").trim().toLowerCase();
-const scanners = (process.env.MALTIFY_SCANNERS ?? "opengrep,trivy,gitleaks")
+const apiUrl = (process.env.PROOFHOUSE_SCAN_API_URL ?? "").replace(/\/$/, "");
+const token = process.env.PROOFHOUSE_SCAN_TOKEN ?? "";
+const failOn = (process.env.PROOFHOUSE_SCAN_FAIL_ON ?? "").trim().toLowerCase();
+const scanners = (process.env.PROOFHOUSE_SCAN_SCANNERS ?? "opengrep,trivy,gitleaks")
   .split(",")
   .map((s) => s.trim());
 const runnerTemp = process.env.RUNNER_TEMP ?? "/tmp";
 
 if (!apiUrl || !token) {
-  console.error("::error::MALTIFY_API_URL and MALTIFY_TOKEN are required");
+  console.error("::error::PROOFHOUSE_SCAN_API_URL and PROOFHOUSE_SCAN_TOKEN are required");
   process.exit(1);
 }
 
@@ -60,7 +60,7 @@ const res = await fetch(`${apiUrl}/api/ingest`, {
 
 const text = await res.text();
 if (!res.ok) {
-  console.error(`::error::maltify ingest failed: HTTP ${res.status} — ${text}`);
+  console.error(`::error::proofhouse-scan ingest failed: HTTP ${res.status} — ${text}`);
   process.exit(1);
 }
 
@@ -79,7 +79,7 @@ if (process.env.GITHUB_STEP_SUMMARY) {
     .join("\n");
   appendFileSync(
     process.env.GITHUB_STEP_SUMMARY,
-    `## maltify scan\n\n` +
+    `## proofhouse-scan scan\n\n` +
       `Scan **#${result.scan_id}** — ${counts.new ?? 0} new, ${counts.resolved ?? 0} resolved, ` +
       `**${counts.totalOpen ?? 0} open total**\n\n` +
       `### New findings by severity\n\n| severity | count |\n|---|---|\n${sevRow}\n`,

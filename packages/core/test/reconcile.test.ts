@@ -29,7 +29,7 @@ describe("reconcileFindings", () => {
   let repoId: number;
 
   beforeEach(() => {
-    db = openDb(join(mkdtempSync(join(tmpdir(), "maltify-test-")), "t.db"));
+    db = openDb(join(mkdtempSync(join(tmpdir(), "proofhouse-scan-test-")), "t.db"));
     repoId = db
       .insert(repos)
       .values({ owner: "o", name: "r", fullName: "o/r", createdAt: nowIso() })

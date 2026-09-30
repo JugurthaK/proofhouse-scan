@@ -31,7 +31,7 @@ export default function Login() {
         className="w-full max-w-sm rounded-lg border border-line bg-surface-1 p-6"
       >
         <h1 className="text-lg font-semibold tracking-tight">
-          <span className="text-accent">mal</span>tify
+          <span className="text-accent">proofhouse</span>-scan
         </h1>
         <p className="mt-1 text-sm text-ink-3">
           This instance requires an API token.

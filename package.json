@@ -1,10 +1,10 @@
 {
-  "name": "maltify",
+  "name": "proofhouse-scan",
   "private": true,
   "type": "module",
   "scripts": {
     "build": "pnpm -r build",
-    "maltify": "node packages/cli/dist/index.js",
+    "proofhouse-scan": "node packages/cli/dist/index.js",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
     "dev": "pnpm --parallel -r dev"

@@ -10,37 +10,37 @@ loadDotenv({ path: resolve(process.cwd(), "../../.env"), quiet: true });
 
 const envSchema = z.object({
   GITHUB_TOKEN: z.string().min(1, "GITHUB_TOKEN is required"),
-  MALTIFY_REPO: z
+  PROOFHOUSE_SCAN_REPO: z
     .string()
-    .regex(/^[^/]+\/[^/]+$/, "MALTIFY_REPO must be owner/repo"),
+    .regex(/^[^/]+\/[^/]+$/, "PROOFHOUSE_SCAN_REPO must be owner/repo"),
   LLM_PROVIDER: z.enum(["anthropic", "openai"]).default("anthropic"),
   LLM_MODEL: z.string().default("claude-opus-5"),
   ANTHROPIC_API_KEY: z.string().optional(),
   OPENAI_API_KEY: z.string().optional(),
-  MALTIFY_DB_PATH: z.string().default("~/.maltify/maltify.db"),
+  PROOFHOUSE_SCAN_DB_PATH: z.string().default("~/.proofhouse-scan/proofhouse-scan.db"),
   PORT: z.coerce.number().int().positive().default(8790),
   HOST: z.string().default("127.0.0.1"),
-  MALTIFY_API_TOKEN: z.string().optional(),
-  MALTIFY_INGEST_TOKEN: z.string().optional(),
+  PROOFHOUSE_SCAN_API_TOKEN: z.string().optional(),
+  PROOFHOUSE_SCAN_INGEST_TOKEN: z.string().optional(),
 });
 
-export type MaltifyConfig = z.infer<typeof envSchema> & {
+export type ProofhouseScanConfig = z.infer<typeof envSchema> & {
   dbPath: string;
-  maltifyOwner: string;
-  maltifyRepo: string;
+  proofhouseScanOwner: string;
+  proofhouseScanRepo: string;
 };
 
 function expandHome(p: string): string {
   return p.startsWith("~/") || p === "~" ? p.replace("~", homedir()) : p;
 }
 
-let cached: MaltifyConfig | null = null;
+let cached: ProofhouseScanConfig | null = null;
 
 /**
  * Validated configuration. `requireGithub`/`requireLlm` let read-only commands
- * (e.g. `maltify list`) run without a full .env.
+ * (e.g. `proofhouse-scan list`) run without a full .env.
  */
-export function getConfig(): MaltifyConfig {
+export function getConfig(): ProofhouseScanConfig {
   if (cached) return cached;
   const parsed = envSchema.safeParse(process.env);
   if (!parsed.success) {
@@ -52,15 +52,15 @@ export function getConfig(): MaltifyConfig {
     );
   }
   const env = parsed.data;
-  const [maltifyOwner, maltifyRepo] = env.MALTIFY_REPO.split("/") as [
+  const [proofhouseScanOwner, proofhouseScanRepo] = env.PROOFHOUSE_SCAN_REPO.split("/") as [
     string,
     string,
   ];
   cached = {
     ...env,
-    dbPath: resolve(expandHome(env.MALTIFY_DB_PATH)),
-    maltifyOwner,
-    maltifyRepo,
+    dbPath: resolve(expandHome(env.PROOFHOUSE_SCAN_DB_PATH)),
+    proofhouseScanOwner,
+    proofhouseScanRepo,
   };
   return cached;
 }
@@ -77,13 +77,13 @@ export function getLocalConfig(): {
   ingestToken: string | undefined;
 } {
   const dbPath = resolve(
-    expandHome(process.env.MALTIFY_DB_PATH ?? "~/.maltify/maltify.db"),
+    expandHome(process.env.PROOFHOUSE_SCAN_DB_PATH ?? "~/.proofhouse-scan/proofhouse-scan.db"),
   );
   return {
     dbPath,
     port: Number(process.env.PORT ?? 8790),
     host: process.env.HOST ?? "127.0.0.1",
-    apiToken: process.env.MALTIFY_API_TOKEN || undefined,
-    ingestToken: process.env.MALTIFY_INGEST_TOKEN || undefined,
+    apiToken: process.env.PROOFHOUSE_SCAN_API_TOKEN || undefined,
+    ingestToken: process.env.PROOFHOUSE_SCAN_INGEST_TOKEN || undefined,
   };
 }

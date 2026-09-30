@@ -1,0 +1,10 @@
+{
+  "name": "proofhouse-scan-fixture",
+  "version": "1.0.0",
+  "description": "Deliberately vulnerable fixture repo for testing proofhouse-scan. DO NOT deploy.",
+  "main": "src/server.js",
+  "dependencies": {
+    "express": "4.17.1",
+    "lodash": "4.17.4"
+  }
+}

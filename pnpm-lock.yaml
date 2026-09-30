@@ -22,10 +22,10 @@ importers:
       '@fastify/static':
         specifier: ^8.3.0
         version: 8.3.0
-      '@maltify/core':
+      '@proofhouse-scan/core':
         specifier: workspace:*
         version: link:../core
-      '@maltify/server':
+      '@proofhouse-scan/server':
         specifier: workspace:*
         version: link:../server
       adm-zip:
@@ -129,7 +129,7 @@ importers:
       '@fastify/static':
         specifier: ^8.3.0
         version: 8.3.0
-      '@maltify/core':
+      '@proofhouse-scan/core':
         specifier: workspace:*
         version: link:../core
       fastify:

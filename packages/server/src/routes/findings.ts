@@ -5,7 +5,7 @@ import {
   repos,
   type Db,
   type Finding,
-} from "@maltify/core";
+} from "@proofhouse-scan/core";
 import { and, desc, eq, gte, lte, sql, type SQL } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 

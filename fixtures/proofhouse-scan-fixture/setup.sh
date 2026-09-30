@@ -4,7 +4,7 @@
 #
 # Usage:
 #   ./setup.sh                      # init the repo locally in ./repo
-#   cd repo && gh repo create <you>/maltify-fixture --private --source=. --push
+#   cd repo && gh repo create <you>/proofhouse-scan-fixture --private --source=. --push
 set -euo pipefail
 
 cd "$(dirname "$0")"
@@ -30,4 +30,4 @@ git rm -q config/credentials.txt
 git commit -qm "remove credentials file"
 
 echo "Fixture repo ready in $(pwd)"
-echo "Push it with: gh repo create <you>/maltify-fixture --private --source=. --push"
+echo "Push it with: gh repo create <you>/proofhouse-scan-fixture --private --source=. --push"

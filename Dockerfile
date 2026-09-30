@@ -24,7 +24,7 @@ COPY --from=build /app /app
 ENV NODE_ENV=production \
     HOST=0.0.0.0 \
     PORT=8790 \
-    MALTIFY_DB_PATH=/data/maltify.db
+    PROOFHOUSE_SCAN_DB_PATH=/data/proofhouse-scan.db
 VOLUME /data
 EXPOSE 8790
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \

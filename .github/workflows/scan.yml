@@ -1,5 +1,5 @@
-name: maltify-scan
-run-name: "maltify-scan ${{ inputs.target_repo }} [${{ inputs.correlation_id }}]"
+name: proofhouse-scan
+run-name: "proofhouse-scan ${{ inputs.target_repo }} [${{ inputs.correlation_id }}]"
 
 on:
   workflow_dispatch:

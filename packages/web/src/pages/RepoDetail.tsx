@@ -104,7 +104,7 @@ export default function RepoDetail() {
                     className="ml-2 rounded bg-surface-2 px-1.5 py-0.5 text-xs text-ink-3"
                     title={
                       scan.source === "action"
-                        ? "Pushed by the maltify GitHub Action"
+                        ? "Pushed by the proofhouse-scan GitHub Action"
                         : "Central workflow dispatch"
                     }
                   >

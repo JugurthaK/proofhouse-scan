@@ -37,7 +37,7 @@ export default function Dashboard() {
       <div className="rounded-lg border border-line bg-surface-1 p-10 text-center">
         <p className="text-lg font-medium">No repositories scanned yet</p>
         <p className="mt-2 text-sm text-ink-3">
-          Run <code className="rounded bg-surface-2 px-1.5 py-0.5">maltify scan owner/repo</code>{" "}
+          Run <code className="rounded bg-surface-2 px-1.5 py-0.5">proofhouse-scan scan owner/repo</code>{" "}
           to dispatch your first scan.
         </p>
       </div>

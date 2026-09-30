@@ -9,7 +9,7 @@ import { ingestSarifScan } from "../src/scan/ingest.js";
 import { gitleaksSarif, opengrepSarif, trivySarif } from "./fixtures.js";
 
 function tempDbPath(): string {
-  return join(mkdtempSync(join(tmpdir(), "maltify-ingest-")), "t.db");
+  return join(mkdtempSync(join(tmpdir(), "proofhouse-scan-ingest-")), "t.db");
 }
 
 describe("ingestSarifScan", () => {

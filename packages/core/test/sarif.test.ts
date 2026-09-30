@@ -9,7 +9,7 @@ describe("normalizePath", () => {
     expect(normalizePath("target/src/a.js")).toBe("src/a.js");
     expect(normalizePath("./src/a.js")).toBe("src/a.js");
     expect(
-      normalizePath("file:///home/runner/work/maltify/maltify/src/a.js"),
+      normalizePath("file:///home/runner/work/proofhouse-scan/proofhouse-scan/src/a.js"),
     ).toBe("src/a.js");
   });
 });

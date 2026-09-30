@@ -1,10 +1,10 @@
 {
-  "name": "@maltify/cli",
+  "name": "@proofhouse-scan/cli",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "bin": {
-    "maltify": "./dist/index.js"
+    "proofhouse-scan": "./dist/index.js"
   },
   "scripts": {
     "build": "tsup",
@@ -16,8 +16,8 @@
     "@ai-sdk/openai": "^4.0.66",
     "@fastify/cors": "^10.1.0",
     "@fastify/static": "^8.3.0",
-    "@maltify/core": "workspace:*",
-    "@maltify/server": "workspace:*",
+    "@proofhouse-scan/core": "workspace:*",
+    "@proofhouse-scan/server": "workspace:*",
     "adm-zip": "^0.6.1",
     "ai": "^7.0.100",
     "better-sqlite3": "^13.0.3",

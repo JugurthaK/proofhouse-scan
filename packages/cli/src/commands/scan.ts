@@ -1,4 +1,4 @@
-import { getConfig, openDb, runScan } from "@maltify/core";
+import { getConfig, openDb, runScan } from "@proofhouse-scan/core";
 import type { Command } from "commander";
 
 function parseTimeout(value: string): number {
@@ -38,6 +38,6 @@ export function registerScanCommand(program: Command): void {
         `  Findings: ${c.new} new, ${c.open} still open, ${c.reopened} reopened, ` +
           `${c.resolved} resolved — ${c.totalOpen} open total`,
       );
-      console.log(`\nBrowse them with: maltify serve`);
+      console.log(`\nBrowse them with: proofhouse-scan serve`);
     });
 }

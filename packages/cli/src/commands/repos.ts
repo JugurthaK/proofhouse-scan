@@ -1,4 +1,4 @@
-import { getLocalConfig, openDb, repos } from "@maltify/core";
+import { getLocalConfig, openDb, repos } from "@proofhouse-scan/core";
 import type { Command } from "commander";
 import { sql } from "drizzle-orm";
 
@@ -22,7 +22,7 @@ export function registerReposCommand(program: Command): void {
         .from(repos)
         .all();
       if (rows.length === 0) {
-        console.log("No repos yet — run: maltify scan <owner/repo>");
+        console.log("No repos yet — run: proofhouse-scan scan <owner/repo>");
         return;
       }
       console.table(rows);
