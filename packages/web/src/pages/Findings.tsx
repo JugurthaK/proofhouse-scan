@@ -1,19 +1,25 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { api } from "../api";
+import { api, type Severity } from "../api";
 import { SEV_COLOR } from "../components/Badges";
 import { FindingsTable } from "../components/FindingsTable";
-import { ChevronLeftIcon, ChevronRightIcon, ListIcon, XIcon } from "../components/Icons";
-import { btn, Card, EmptyState, ErrorNote, PageHeader, RepoAvatar, Skeleton, usePageTitle } from "../components/ui";
+import { ChevronLeftIcon, ChevronRightIcon, ListIcon, SearchIcon, XIcon } from "../components/Icons";
+import { btn, Card, EmptyState, ErrorNote, PageHeader, Skeleton, usePageTitle } from "../components/ui";
 import { byName, CATEGORY_LABEL, formatCount, humanize, plural, SEVERITIES } from "../format";
 
 const PAGE_SIZE = 50;
 
+// The page shows unresolved findings unless told otherwise, so its totals match
+// the counts on the overview, repo pages and tabs. "all" lifts the filter.
 const SELECTS: { key: string; any: string; options: { value: string; label: string }[] }[] = [
   {
     key: "status",
-    any: "Any status",
-    options: ["new", "open", "reopened", "resolved"].map((v) => ({ value: v, label: humanize(v) })),
+    any: "Unresolved",
+    options: [
+      { value: "all", label: "All statuses" },
+      ...["new", "open", "reopened", "resolved"].map((v) => ({ value: v, label: humanize(v) })),
+    ],
   },
   {
     key: "qualification",
@@ -37,7 +43,7 @@ const SELECTS: { key: string; any: string; options: { value: string; label: stri
   },
 ];
 
-const FILTER_KEYS = ["severity", ...SELECTS.map((s) => s.key)];
+const FILTER_KEYS = ["q", "severity", ...SELECTS.map((s) => s.key)];
 
 function RepoTabs({
   current,
@@ -68,11 +74,10 @@ function RepoTabs({
             type="button"
             role="tab"
             aria-selected={active}
-            title={`${r.fullName} — ${r.openFindings} open`}
+            title={`${r.fullName} — ${r.openFindings} unresolved`}
             onClick={() => onSelect(String(r.id))}
             className={tab(active)}
           >
-            <RepoAvatar name={r.name} size="sm" />
             {r.name}
             <span className="flex items-center gap-1 text-xs text-ink-4 tabular">
               {r.criticalOrHigh > 0 && <span className="h-1.5 w-1.5 rounded-full bg-sev-critical" />}
@@ -85,18 +90,84 @@ function RepoTabs({
   );
 }
 
+/** Debounced search bound to the `q` URL param; "/" focuses it from anywhere. */
+function SearchBox({ value, onChange }: { value: string; onChange: (term: string) => void }) {
+  const [term, setTerm] = useState(value);
+  const input = useRef<HTMLInputElement>(null);
+  const commit = useRef(onChange);
+  commit.current = onChange;
+
+  useEffect(() => setTerm(value), [value]);
+  useEffect(() => {
+    if (term.trim() === value) return;
+    const t = setTimeout(() => commit.current(term.trim()), 300);
+    return () => clearTimeout(t);
+  }, [term, value]);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "/" || e.metaKey || e.ctrlKey || e.altKey) return;
+      if ((e.target as HTMLElement).closest("input, textarea, select, [contenteditable]")) return;
+      e.preventDefault();
+      input.current?.focus();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  return (
+    <label className="flex h-9 w-full items-center gap-2 rounded-lg border border-line bg-surface-1 px-3 text-ink-3 shadow-sm transition-colors focus-within:border-brand-300 focus-within:ring-3 focus-within:ring-brand-100 sm:w-80">
+      <SearchIcon size={15} />
+      <input
+        ref={input}
+        value={term}
+        onChange={(e) => setTerm(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") commit.current(term.trim());
+          if (e.key === "Escape") {
+            setTerm("");
+            commit.current("");
+            input.current?.blur();
+          }
+        }}
+        placeholder="Search rule, message or file"
+        aria-label="Search findings"
+        className="min-w-0 flex-1 bg-transparent text-sm text-ink outline-none placeholder:text-ink-4 focus-visible:outline-none"
+      />
+      {term ? (
+        <button
+          type="button"
+          onClick={() => {
+            setTerm("");
+            commit.current("");
+          }}
+          aria-label="Clear search"
+          className="rounded p-0.5 text-ink-4 hover:text-ink"
+        >
+          <XIcon size={14} />
+        </button>
+      ) : (
+        <kbd className="rounded border border-line bg-surface-2 px-1.5 text-[11px] text-ink-4">/</kbd>
+      )}
+    </label>
+  );
+}
+
 export default function Findings() {
   usePageTitle("Findings");
   const [params, setParams] = useSearchParams();
-  const page = Math.max(1, Number(params.get("page") ?? 1));
+  const page = Math.max(1, Number(params.get("page")) || 1);
   const repoId = params.get("repo_id");
   const scanId = params.get("scan_id");
+  const status = params.get("status") ?? "";
+  const severities = (params.get("severity") ?? "").split(",").filter(Boolean);
 
   const queryParams: Record<string, string> = { page: String(page), page_size: String(PAGE_SIZE) };
   for (const key of [...FILTER_KEYS, "repo_id", "scan_id"]) {
     const v = params.get(key);
     if (v) queryParams[key] = v;
   }
+  if (!status) queryParams.status = "unresolved";
+  else if (status === "all") delete queryParams.status;
 
   const { data, isLoading, isFetching, isPlaceholderData, error } = useQuery({
     queryKey: ["findings", queryParams],
@@ -107,15 +178,22 @@ export default function Findings() {
   const update = (changes: Record<string, string | null>) => {
     const next = new URLSearchParams(params);
     for (const [k, v] of Object.entries(changes)) {
-      if (v === null) next.delete(k);
+      if (v === null || v === "") next.delete(k);
       else next.set(k, v);
     }
     if (!("page" in changes)) next.delete("page");
     setParams(next);
   };
 
+  const toggleSeverity = (s: Severity) => {
+    const next = severities.includes(s) ? severities.filter((x) => x !== s) : [...severities, s];
+    update({ severity: SEVERITIES.filter((x) => next.includes(x)).join(",") || null });
+  };
+
   const activeFilters = FILTER_KEYS.filter((k) => params.get(k));
-  const severity = params.get("severity");
+  const clearFilters = () => update(Object.fromEntries(activeFilters.map((k) => [k, null])));
+  const narrowed = activeFilters.some((k) => k !== "status") || !!scanId;
+  const statusWord = !status ? "unresolved " : status === "all" ? "" : `${status} `;
   const totalPages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
   const from = data && data.total > 0 ? (page - 1) * PAGE_SIZE + 1 : 0;
   const to = data ? Math.min(page * PAGE_SIZE, data.total) : 0;
@@ -124,7 +202,14 @@ export default function Findings() {
     <div className="space-y-5">
       <PageHeader
         title="Findings"
-        subtitle={data ? plural(data.total, "finding") + (activeFilters.length ? " match your filters" : "") : <Skeleton className="h-4 w-40" />}
+        subtitle={
+          data ? (
+            plural(data.total, `${statusWord}finding`) + (narrowed ? " match your filters" : "")
+          ) : (
+            <Skeleton className="h-4 w-40" />
+          )
+        }
+        actions={<SearchBox value={params.get("q") ?? ""} onChange={(q) => update({ q })} />}
       />
 
       {/* A scan belongs to one repo — switching repo clears the scan filter. */}
@@ -133,13 +218,13 @@ export default function Findings() {
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Severity">
           {SEVERITIES.map((s) => {
-            const active = severity === s;
+            const active = severities.includes(s);
             return (
               <button
                 key={s}
                 type="button"
                 aria-pressed={active}
-                onClick={() => update({ severity: active ? null : s })}
+                onClick={() => toggleSeverity(s)}
                 className={`inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-sm transition-colors ${
                   active
                     ? "border-brand-300 bg-brand-50 font-medium text-brand-700"
@@ -160,7 +245,7 @@ export default function Findings() {
           return (
             <select
               key={f.key}
-              aria-label={f.any.replace("Any ", "")}
+              aria-label={f.key === "status" ? "Status" : f.any.replace("Any ", "")}
               value={value}
               onChange={(e) => update({ [f.key]: e.target.value || null })}
               className={`select h-8 rounded-lg border pl-2.5 text-sm transition-colors ${
@@ -194,11 +279,7 @@ export default function Findings() {
         )}
 
         {activeFilters.length > 0 && (
-          <button
-            type="button"
-            onClick={() => update(Object.fromEntries(activeFilters.map((k) => [k, null])))}
-            className="ml-1 text-sm text-ink-3 hover:text-ink"
-          >
+          <button type="button" onClick={clearFilters} className="ml-1 text-sm text-ink-3 hover:text-ink">
             Clear filters
           </button>
         )}
@@ -214,25 +295,35 @@ export default function Findings() {
             ))}
           </div>
         ) : data && data.findings.length === 0 ? (
-          <EmptyState
-            icon={<ListIcon size={20} />}
-            title={activeFilters.length || scanId ? "No findings match these filters" : "No findings yet"}
-            action={
-              activeFilters.length > 0 ? (
-                <button
-                  type="button"
-                  className={btn.secondary}
-                  onClick={() => update(Object.fromEntries(activeFilters.map((k) => [k, null])))}
-                >
-                  Clear filters
-                </button>
-              ) : undefined
-            }
-          >
-            {activeFilters.length || scanId
-              ? "Try widening the severity, status or triage filters."
-              : "Findings show up here once a scan completes."}
-          </EmptyState>
+          narrowed ? (
+            <EmptyState
+              icon={<ListIcon size={20} />}
+              title="No findings match these filters"
+              action={
+                activeFilters.length > 0 ? (
+                  <button type="button" className={btn.secondary} onClick={clearFilters}>
+                    Clear filters
+                  </button>
+                ) : undefined
+              }
+            >
+              Try a broader search, or widen the severity, status or triage filters.
+            </EmptyState>
+          ) : (
+            <EmptyState
+              icon={<ListIcon size={20} />}
+              title={status ? "No findings" : "No unresolved findings"}
+              action={
+                status !== "all" ? (
+                  <button type="button" className={btn.secondary} onClick={() => update({ status: "all" })}>
+                    Show all statuses
+                  </button>
+                ) : undefined
+              }
+            >
+              {status ? "Nothing here yet — findings show up once a scan completes." : "Everything found so far has been resolved."}
+            </EmptyState>
+          )
         ) : (
           data && (
             <div className={`transition-opacity ${isFetching && isPlaceholderData ? "opacity-60" : ""}`}>

@@ -1,7 +1,7 @@
 import { useEffect, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { absoluteTime, relativeTime } from "../format";
-import { AlertIcon, LockIcon } from "./Icons";
+import { AlertIcon, ChevronRightIcon, LockIcon } from "./Icons";
 
 const BTN =
   "inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-3.5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50";
@@ -79,22 +79,34 @@ export function StatTile({
   value,
   hint,
   accent,
+  to,
 }: {
   label: string;
   value: ReactNode;
   hint?: ReactNode;
   /** Severity/status color for the small marker beside the label. */
   accent?: string;
+  /** Drill-down, usually a filtered findings list. */
+  to?: string;
 }) {
-  return (
-    <div className="rounded-xl border border-line bg-surface-1 px-5 py-4 shadow-card">
+  const body = (
+    <>
       <p className="flex items-center gap-2 text-xs font-medium text-ink-3">
         {accent && <span className="h-2 w-2 rounded-full" style={{ background: accent }} />}
         {label}
+        {to && <ChevronRightIcon size={14} className="ml-auto text-ink-4 transition-colors group-hover:text-brand-600" />}
       </p>
       <p className="mt-1.5 text-[28px] leading-none font-semibold tracking-tight text-ink">{value}</p>
       {hint && <p className="mt-2 text-xs text-ink-3">{hint}</p>}
-    </div>
+    </>
+  );
+  const cls = "block rounded-xl border border-line bg-surface-1 px-5 py-4 shadow-card";
+  return to ? (
+    <Link to={to} className={`group ${cls} transition-colors hover:border-brand-200`}>
+      {body}
+    </Link>
+  ) : (
+    <div className={cls}>{body}</div>
   );
 }
 

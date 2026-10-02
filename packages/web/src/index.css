@@ -118,14 +118,17 @@ kbd,
   font-family: var(--font-mono);
 }
 
-:focus-visible {
-  outline: 2px solid var(--brand-500);
-  outline-offset: 2px;
-  border-radius: 4px;
-}
+/* In the base layer so utilities (e.g. focus-visible:outline-none) can override. */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--brand-500);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
 
-::selection {
-  background: var(--brand-100);
+  ::selection {
+    background: var(--brand-100);
+  }
 }
 
 /* Native selects styled as quiet pills with our own chevron. */

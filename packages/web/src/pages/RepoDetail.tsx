@@ -27,7 +27,7 @@ import {
   TimeAgo,
   usePageTitle,
 } from "../components/ui";
-import { duration, formatCount, github } from "../format";
+import { duration, findingsLink, formatCount, github } from "../format";
 
 const SCAN_STATUS: Record<Scan["status"], { label: string; cls: string; icon: ReactNode }> = {
   completed: { label: "Completed", cls: "bg-good-bg text-good", icon: <CheckIcon size={12} /> },
@@ -119,9 +119,10 @@ function ScanTable({ scans, repoId, fullName }: { scans: Scan[]; repoId: number;
                 </td>
                 <td className="px-3 py-3 text-right align-top text-ink-2 tabular">{scan.countsOpen ?? "—"}</td>
                 <td className="py-3 pr-5 pl-3 text-right align-top">
+                  {/* Everything that scan saw, including findings resolved since. */}
                   {scan.status === "completed" && (
                     <Link
-                      to={`/findings?repo_id=${repoId}&scan_id=${scan.id}`}
+                      to={findingsLink({ repo_id: String(repoId), scan_id: String(scan.id), status: "all" })}
                       className="text-xs font-medium whitespace-nowrap text-brand-600 hover:text-brand-700"
                     >
                       Findings →
@@ -203,6 +204,7 @@ export default function RepoDetail() {
   const open = stats?.bySeverity.reduce((sum, s) => sum + s.count, 0) ?? 0;
   const untriaged = stats?.byQualification.find((q) => q.qualification === "unqualified")?.count ?? 0;
   const v = (n: number) => (stats ? formatCount(n) : "–");
+  const scope = { repo_id: String(repo.id) };
 
   return (
     <div className="space-y-6">
@@ -241,7 +243,7 @@ export default function RepoDetail() {
               GitHub
               <ExternalLinkIcon size={14} />
             </a>
-            <Link to={`/findings?repo_id=${repo.id}`} className={btn.secondary}>
+            <Link to={findingsLink(scope)} className={btn.secondary}>
               <ListIcon size={15} />
               View findings
             </Link>
@@ -271,10 +273,25 @@ export default function RepoDetail() {
       <ErrorNote error={rescan.error} />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatTile label="Open findings" value={v(open)} />
-        <StatTile label="Critical" value={v(sev("critical"))} accent="var(--sev-critical)" />
-        <StatTile label="High" value={v(sev("high"))} accent="var(--sev-high)" />
-        <StatTile label="Not triaged" value={v(untriaged)} accent="var(--brand-500)" />
+        <StatTile label="Open findings" value={v(open)} to={findingsLink(scope)} />
+        <StatTile
+          label="Critical"
+          value={v(sev("critical"))}
+          accent="var(--sev-critical)"
+          to={findingsLink({ ...scope, severity: "critical" })}
+        />
+        <StatTile
+          label="High"
+          value={v(sev("high"))}
+          accent="var(--sev-high)"
+          to={findingsLink({ ...scope, severity: "high" })}
+        />
+        <StatTile
+          label="Not triaged"
+          value={v(untriaged)}
+          accent="var(--brand-500)"
+          to={findingsLink({ ...scope, qualification: "unqualified" })}
+        />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
@@ -282,7 +299,11 @@ export default function RepoDetail() {
           {timeline ? <TrendChart points={repoTrend(timeline)} /> : <Skeleton className="h-[220px]" />}
         </Card>
         <Card title="By severity" description="Open findings">
-          {stats ? <BarList rows={severityRows(stats.bySeverity)} empty="No open findings." /> : <Skeleton className="h-40" />}
+          {stats ? (
+            <BarList rows={severityRows(stats.bySeverity, scope)} empty="No open findings." />
+          ) : (
+            <Skeleton className="h-40" />
+          )}
         </Card>
       </div>
 

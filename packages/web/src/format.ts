@@ -31,11 +31,11 @@ export function relativeTime(iso: string | null | undefined): string {
 
 export function absoluteTime(iso: string | null | undefined): string {
   if (!iso) return "";
-  return new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+  return new Date(iso).toLocaleString("en", { dateStyle: "medium", timeStyle: "short" });
 }
 
 export function shortDate(ms: number): string {
-  return new Date(ms).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return new Date(ms).toLocaleDateString("en", { month: "short", day: "numeric" });
 }
 
 export function duration(startIso: string, endIso: string | null): string | null {
@@ -53,6 +53,11 @@ export function formatCount(n: number): string {
   return n >= 10_000 ? compact.format(n) : nf.format(n);
 }
 
+/** Dotted rule IDs end in the meaningful part: "…injection.tainted-sql-string". */
+export function shortRuleId(ruleId: string): string {
+  return ruleId.split(".").pop() || ruleId;
+}
+
 /** "true_positive" → "True positive". */
 export function humanize(value: string): string {
   const s = value.replace(/_/g, " ");
@@ -63,14 +68,20 @@ export function plural(n: number, word: string, many = `${word}s`): string {
   return `${formatCount(n)} ${n === 1 ? word : many}`;
 }
 
-/** Stable alphabetical order — keeps the sidebar predictable. */
+/** Stable alphabetical order by the name people see — keeps the sidebar predictable. */
 export function byName(a: RepoSummary, b: RepoSummary): number {
-  return a.fullName.localeCompare(b.fullName);
+  return a.name.localeCompare(b.name) || a.owner.localeCompare(b.owner);
 }
 
 /** Most urgent first: critical/high, then open count, then name. */
 export function byRisk(a: RepoSummary, b: RepoSummary): number {
   return b.criticalOrHigh - a.criticalOrHigh || b.openFindings - a.openFindings || byName(a, b);
+}
+
+/** A findings-list URL; commas stay readable ("severity=critical,high"). */
+export function findingsLink(params: Record<string, string> = {}): string {
+  const qs = new URLSearchParams(params).toString().replace(/%2C/gi, ",");
+  return qs ? `/findings?${qs}` : "/findings";
 }
 
 export const github = {

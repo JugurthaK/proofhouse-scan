@@ -1,8 +1,7 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import type { FindingRow } from "../api";
-import { CATEGORY_LABEL } from "../format";
+import { CATEGORY_LABEL, shortRuleId } from "../format";
 import { QualificationBadge, SeverityBadge, StatusBadge } from "./Badges";
-import { RepoAvatar } from "./ui";
 
 /** "src/api/users.ts:42" with the directory de-emphasized. */
 export function FilePath({ path, line }: { path: string; line?: number | null }) {
@@ -24,12 +23,12 @@ export function FindingsTable({ findings, showRepo = true }: { findings: Finding
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[820px] table-fixed text-left text-sm">
+      <table className="w-full min-w-[940px] table-fixed text-left text-sm">
         <colgroup>
           <col className="w-[104px]" />
           <col />
-          <col className="w-[22%]" />
-          {showRepo && <col className="w-[15%]" />}
+          <col className="w-[20%]" />
+          {showRepo && <col className="w-[13%]" />}
           <col className="w-[120px]" />
           <col className="w-[96px]" />
           <col className="w-[116px]" />
@@ -68,7 +67,7 @@ export function FindingsTable({ findings, showRepo = true }: { findings: Finding
                   className="mono block truncate text-[13px] font-medium text-ink group-hover:text-brand-700"
                   title={f.ruleId}
                 >
-                  {f.ruleId}
+                  {shortRuleId(f.ruleId)}
                 </Link>
                 <span className="mt-0.5 block truncate text-xs text-ink-3" title={f.message}>
                   {f.message}
@@ -79,9 +78,8 @@ export function FindingsTable({ findings, showRepo = true }: { findings: Finding
               </td>
               {showRepo && (
                 <td className="px-3 py-3 align-top">
-                  <span className="flex min-w-0 items-center gap-2 text-xs text-ink-2" title={f.repo}>
-                    <RepoAvatar name={f.repo.split("/").pop() ?? f.repo} size="sm" />
-                    <span className="truncate">{f.repo.split("/").pop()}</span>
+                  <span className="block truncate text-xs text-ink-2" title={f.repo}>
+                    {f.repo.split("/").pop()}
                   </span>
                 </td>
               )}

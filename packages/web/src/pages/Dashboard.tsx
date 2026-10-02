@@ -24,7 +24,7 @@ import {
   TimeAgo,
   usePageTitle,
 } from "../components/ui";
-import { byRisk, CATEGORY_LABEL, formatCount, plural } from "../format";
+import { byRisk, CATEGORY_LABEL, findingsLink, formatCount, plural } from "../format";
 
 const TRIAGE_ORDER = ["unqualified", "needs_review", "true_positive", "false_positive"] as const;
 const TRIAGE_LABEL: Record<(typeof TRIAGE_ORDER)[number], string> = {
@@ -89,7 +89,14 @@ function RepoTable({
                 <td className="px-3 py-3 text-right font-medium text-ink tabular">{formatCount(repo.openFindings)}</td>
                 <td className="px-3 py-3 text-right tabular">
                   {repo.criticalOrHigh > 0 ? (
-                    <span className="font-medium text-sev-critical">{formatCount(repo.criticalOrHigh)}</span>
+                    <Link
+                      to={findingsLink({ repo_id: String(repo.id), severity: "critical,high" })}
+                      onClick={(e) => e.stopPropagation()}
+                      title="Show these findings"
+                      className="font-medium text-sev-critical hover:underline"
+                    >
+                      {formatCount(repo.criticalOrHigh)}
+                    </Link>
                   ) : (
                     <span className="text-ink-4">0</span>
                   )}
@@ -185,11 +192,29 @@ export default function Dashboard() {
       <ErrorNote error={stats.error ?? repos.error} />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatTile label="Open findings" value={s ? formatCount(total) : "–"} hint={`across ${plural(repoCount, "repo")}`} />
-        <StatTile label="Critical" value={s ? formatCount(critical) : "–"} accent="var(--sev-critical)" hint="Fix first" />
-        <StatTile label="High" value={s ? formatCount(high) : "–"} accent="var(--sev-high)" hint="Fix next" />
+        <StatTile
+          label="Open findings"
+          value={s ? formatCount(total) : "–"}
+          hint={`across ${plural(repoCount, "repo")}`}
+          to={findingsLink()}
+        />
+        <StatTile
+          label="Critical"
+          value={s ? formatCount(critical) : "–"}
+          accent="var(--sev-critical)"
+          hint="Fix first"
+          to={findingsLink({ severity: "critical" })}
+        />
+        <StatTile
+          label="High"
+          value={s ? formatCount(high) : "–"}
+          accent="var(--sev-high)"
+          hint="Fix next"
+          to={findingsLink({ severity: "high" })}
+        />
         <StatTile
           label="Not triaged"
+          to={findingsLink({ qualification: "unqualified" })}
           value={s ? formatCount(untriaged) : "–"}
           accent="var(--brand-500)"
           hint={s ? `${formatCount(confirmed)} confirmed true positive${confirmed === 1 ? "" : "s"}` : undefined}
@@ -237,6 +262,7 @@ export default function Dashboard() {
                 key: k,
                 label: k,
                 value: count(s.byScanner, "scanner", k),
+                to: findingsLink({ scanner: k }),
               }))}
             />
           ) : (
@@ -250,6 +276,7 @@ export default function Dashboard() {
                 key: k,
                 label: CATEGORY_LABEL[k],
                 value: count(s.byCategory, "category", k),
+                to: findingsLink({ category: k }),
               }))}
             />
           ) : (
@@ -263,6 +290,7 @@ export default function Dashboard() {
                 key: k,
                 label: TRIAGE_LABEL[k],
                 value: count(s.byQualification, "qualification", k),
+                to: findingsLink({ qualification: k }),
               }))}
             />
           ) : (

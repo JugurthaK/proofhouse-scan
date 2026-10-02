@@ -8,8 +8,9 @@ import {
   YAxis,
   type TooltipProps,
 } from "recharts";
+import { Link } from "react-router-dom";
 import type { RepoSummary, Severity, StatsSummary, TimelinePoint } from "../api";
-import { absoluteTime, formatCount, humanize, SEVERITIES, shortDate } from "../format";
+import { absoluteTime, findingsLink, formatCount, humanize, SEVERITIES, shortDate } from "../format";
 import { SEV_COLOR } from "./Badges";
 
 const AXIS = { fill: "var(--text-muted)", fontSize: 11 };
@@ -144,6 +145,8 @@ export interface BarRow {
   label: string;
   value: number;
   color?: string;
+  /** Drill-down to the findings behind this bar. */
+  to?: string;
 }
 
 /** Direct-labeled horizontal bars — every value is visible, no hover needed. */
@@ -152,15 +155,12 @@ export function BarList({ rows, empty = "Nothing to show." }: { rows: BarRow[]; 
   const total = rows.reduce((s, r) => s + r.value, 0);
   if (total === 0) return <p className="py-6 text-center text-sm text-ink-3">{empty}</p>;
   return (
-    <ul className="space-y-2.5">
+    <ul className="-mx-2 space-y-0.5">
       {rows.map((r) => {
         const pct = total ? Math.round((r.value / total) * 100) : 0;
-        return (
-          <li
-            key={r.key}
-            className="grid grid-cols-[7rem_1fr_3rem] items-center gap-3 text-sm"
-            title={`${r.label}: ${formatCount(r.value)} (${pct}%)`}
-          >
+        const cls = "grid grid-cols-[7rem_1fr_3rem] items-center gap-3 rounded-md px-2 py-1 text-sm";
+        const content = (
+          <>
             <span className="flex min-w-0 items-center gap-2 text-ink-2">
               {r.color && (
                 <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: r.color }} />
@@ -178,6 +178,17 @@ export function BarList({ rows, empty = "Nothing to show." }: { rows: BarRow[]; 
               />
             </span>
             <span className="text-right font-medium text-ink tabular">{formatCount(r.value)}</span>
+          </>
+        );
+        return (
+          <li key={r.key} title={`${r.label}: ${formatCount(r.value)} (${pct}%)`}>
+            {r.to && r.value > 0 ? (
+              <Link to={r.to} className={`${cls} transition-colors hover:bg-brand-50/70`}>
+                {content}
+              </Link>
+            ) : (
+              <div className={cls}>{content}</div>
+            )}
           </li>
         );
       })}
@@ -185,12 +196,14 @@ export function BarList({ rows, empty = "Nothing to show." }: { rows: BarRow[]; 
   );
 }
 
-export function severityRows(data: StatsSummary["bySeverity"]): BarRow[] {
+/** `scope` narrows the drill-down links, e.g. `{ repo_id: "3" }`. */
+export function severityRows(data: StatsSummary["bySeverity"], scope: Record<string, string> = {}): BarRow[] {
   return SEVERITIES.map((s) => ({
     key: s,
     label: humanize(s),
     value: data.find((d) => d.severity === s)?.count ?? 0,
     color: SEV_COLOR[s],
+    to: findingsLink({ ...scope, severity: s }),
   }));
 }
 
