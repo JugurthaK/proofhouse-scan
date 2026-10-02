@@ -22,6 +22,10 @@ const envSchema = z.object({
   HOST: z.string().default("127.0.0.1"),
   PROOFHOUSE_SCAN_API_TOKEN: z.string().optional(),
   PROOFHOUSE_SCAN_INGEST_TOKEN: z.string().optional(),
+  GITHUB_OAUTH_CLIENT_ID: z.string().optional(),
+  GITHUB_OAUTH_CLIENT_SECRET: z.string().optional(),
+  PROOFHOUSE_SCAN_ALLOWED_USERS: z.string().optional(),
+  PROOFHOUSE_SCAN_ALLOWED_ORGS: z.string().optional(),
 });
 
 export type ProofhouseScanConfig = z.infer<typeof envSchema> & {
@@ -65,17 +69,31 @@ export function getConfig(): ProofhouseScanConfig {
   return cached;
 }
 
-/**
- * Config for the server and commands that only touch the local database.
- * Deliberately loose: hosted ingest must not require GITHUB_TOKEN etc.
- */
-export function getLocalConfig(): {
+/** Comma-separated GitHub logins/orgs, normalized (GitHub names are case-insensitive). */
+function parseNameList(value: string | undefined): string[] {
+  return (value ?? "")
+    .split(",")
+    .map((s) => s.trim().replace(/^@/, "").toLowerCase())
+    .filter(Boolean);
+}
+
+export interface LocalConfig {
   dbPath: string;
   port: number;
   host: string;
   apiToken: string | undefined;
   ingestToken: string | undefined;
-} {
+  githubClientId: string | undefined;
+  githubClientSecret: string | undefined;
+  allowedUsers: string[];
+  allowedOrgs: string[];
+}
+
+/**
+ * Config for the server and commands that only touch the local database.
+ * Deliberately loose: hosted ingest must not require GITHUB_TOKEN etc.
+ */
+export function getLocalConfig(): LocalConfig {
   const dbPath = resolve(
     expandHome(process.env.PROOFHOUSE_SCAN_DB_PATH ?? "~/.proofhouse-scan/proofhouse-scan.db"),
   );
@@ -85,5 +103,9 @@ export function getLocalConfig(): {
     host: process.env.HOST ?? "127.0.0.1",
     apiToken: process.env.PROOFHOUSE_SCAN_API_TOKEN || undefined,
     ingestToken: process.env.PROOFHOUSE_SCAN_INGEST_TOKEN || undefined,
+    githubClientId: process.env.GITHUB_OAUTH_CLIENT_ID || undefined,
+    githubClientSecret: process.env.GITHUB_OAUTH_CLIENT_SECRET || undefined,
+    allowedUsers: parseNameList(process.env.PROOFHOUSE_SCAN_ALLOWED_USERS),
+    allowedOrgs: parseNameList(process.env.PROOFHOUSE_SCAN_ALLOWED_ORGS),
   };
 }

@@ -151,8 +151,23 @@ export const remediations = sqliteTable("remediations", {
   updatedAt: text("updated_at").notNull(),
 });
 
+// Web UI sessions from GitHub sign-in. The cookie token itself is never
+// stored — only its SHA-256 — so a leaked database yields no live sessions.
+export const sessions = sqliteTable("sessions", {
+  id: text("id").primaryKey(),
+  githubUserId: integer("github_user_id").notNull(),
+  githubLogin: text("github_login").notNull(),
+  name: text("name"),
+  avatarUrl: text("avatar_url"),
+  // Allowlisted org whose membership granted access; null = user allowlist.
+  grantedByOrg: text("granted_by_org"),
+  createdAt: text("created_at").notNull(),
+  expiresAt: text("expires_at").notNull(),
+});
+
 export type Repo = typeof repos.$inferSelect;
 export type Scan = typeof scans.$inferSelect;
 export type Finding = typeof findings.$inferSelect;
 export type QualificationRow = typeof qualifications.$inferSelect;
 export type Remediation = typeof remediations.$inferSelect;
+export type Session = typeof sessions.$inferSelect;

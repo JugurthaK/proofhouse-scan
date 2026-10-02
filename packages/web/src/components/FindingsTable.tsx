@@ -1,66 +1,99 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import type { FindingRow } from "../api";
+import { CATEGORY_LABEL } from "../format";
 import { QualificationBadge, SeverityBadge, StatusBadge } from "./Badges";
+import { RepoAvatar } from "./ui";
 
-export function FindingsTable({ findings }: { findings: FindingRow[] }) {
-  if (findings.length === 0) {
-    return (
-      <div className="rounded-lg border border-line bg-surface-1 p-10 text-center text-ink-3">
-        No findings match the current filters.
-      </div>
-    );
-  }
+/** "src/api/users.ts:42" with the directory de-emphasized. */
+export function FilePath({ path, line }: { path: string; line?: number | null }) {
+  const cut = path.lastIndexOf("/");
   return (
-    <div className="overflow-x-auto rounded-lg border border-line bg-surface-1">
-      <table className="w-full text-left text-sm">
+    <span className="mono block truncate text-xs" title={`${path}${line ? `:${line}` : ""}`}>
+      {cut >= 0 && <span className="text-ink-4">{path.slice(0, cut + 1)}</span>}
+      <span className="text-ink-2">{path.slice(cut + 1)}</span>
+      {line ? <span className="text-ink-4">:{line}</span> : null}
+    </span>
+  );
+}
+
+export function FindingsTable({ findings, showRepo = true }: { findings: FindingRow[]; showRepo?: boolean }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  // Lets the detail page return to this exact filtered view.
+  const state = { from: location.pathname + location.search };
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[820px] table-fixed text-left text-sm">
+        <colgroup>
+          <col className="w-[104px]" />
+          <col />
+          <col className="w-[22%]" />
+          {showRepo && <col className="w-[15%]" />}
+          <col className="w-[120px]" />
+          <col className="w-[96px]" />
+          <col className="w-[116px]" />
+        </colgroup>
         <thead>
-          <tr className="border-b border-line text-xs text-ink-3">
-            <th className="px-4 py-2.5 font-medium">Severity</th>
-            <th className="px-4 py-2.5 font-medium">Rule</th>
-            <th className="px-4 py-2.5 font-medium">Location</th>
-            <th className="px-4 py-2.5 font-medium">Repo</th>
-            <th className="px-4 py-2.5 font-medium">Scanner</th>
-            <th className="px-4 py-2.5 font-medium">Status</th>
-            <th className="px-4 py-2.5 font-medium">Triage</th>
+          <tr className="border-b border-line bg-surface-2/60 text-xs text-ink-3">
+            <th className="py-2.5 pr-3 pl-5 font-medium">Severity</th>
+            <th className="px-3 py-2.5 font-medium">Finding</th>
+            <th className="px-3 py-2.5 font-medium">Location</th>
+            {showRepo && <th className="px-3 py-2.5 font-medium">Repository</th>}
+            <th className="px-3 py-2.5 font-medium">Source</th>
+            <th className="px-3 py-2.5 font-medium">Status</th>
+            <th className="py-2.5 pr-5 pl-3 font-medium">Triage</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody className="divide-y divide-line">
           {findings.map((f) => (
             <tr
               key={f.id}
-              className="border-b border-line last:border-b-0 hover:bg-surface-2"
+              onClick={(e) => {
+                // Respect cmd/ctrl-click on the inner link (open in new tab).
+                if ((e.target as HTMLElement).closest("a")) return;
+                navigate(`/findings/${f.id}`, { state });
+              }}
+              className={`group cursor-pointer transition-colors hover:bg-brand-50/40 ${
+                f.status === "resolved" ? "text-ink-3" : ""
+              }`}
             >
-              <td className="px-4 py-2.5">
+              <td className="py-3 pr-3 pl-5 align-top">
                 <SeverityBadge severity={f.severity} />
               </td>
-              <td className="max-w-64 px-4 py-2.5">
+              <td className="px-3 py-3 align-top">
                 <Link
                   to={`/findings/${f.id}`}
-                  className="block truncate font-medium text-ink hover:text-accent"
+                  state={state}
+                  className="mono block truncate text-[13px] font-medium text-ink group-hover:text-brand-700"
                   title={f.ruleId}
                 >
                   {f.ruleId}
                 </Link>
-                <span className="block max-w-64 truncate text-xs text-ink-3" title={f.message}>
+                <span className="mt-0.5 block truncate text-xs text-ink-3" title={f.message}>
                   {f.message}
                 </span>
               </td>
-              <td className="max-w-56 px-4 py-2.5">
-                <span className="mono block truncate text-xs text-ink-2" title={f.filePath}>
-                  {f.filePath}
-                  {f.startLine ? `:${f.startLine}` : ""}
-                </span>
+              <td className="px-3 py-3 align-top">
+                <FilePath path={f.filePath} line={f.startLine} />
               </td>
-              <td className="px-4 py-2.5 text-xs text-ink-2">{f.repo}</td>
-              <td className="px-4 py-2.5 text-xs text-ink-2">
-                {f.scanner}
-                <span className="text-ink-3"> · {f.category}</span>
+              {showRepo && (
+                <td className="px-3 py-3 align-top">
+                  <span className="flex min-w-0 items-center gap-2 text-xs text-ink-2" title={f.repo}>
+                    <RepoAvatar name={f.repo.split("/").pop() ?? f.repo} size="sm" />
+                    <span className="truncate">{f.repo.split("/").pop()}</span>
+                  </span>
+                </td>
+              )}
+              <td className="px-3 py-3 align-top text-xs">
+                <span className="block text-ink-2">{f.scanner}</span>
+                <span className="block text-ink-4">{CATEGORY_LABEL[f.category]}</span>
               </td>
-              <td className="px-4 py-2.5">
+              <td className="px-3 py-3 align-top">
                 <StatusBadge status={f.status} />
               </td>
-              <td className="px-4 py-2.5">
-                <QualificationBadge qualification={f.qualification} />
+              <td className="py-3 pr-5 pl-3 align-top">
+                <QualificationBadge qualification={f.qualification} compact />
               </td>
             </tr>
           ))}

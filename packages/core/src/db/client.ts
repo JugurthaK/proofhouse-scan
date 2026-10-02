@@ -101,6 +101,18 @@ CREATE TABLE IF NOT EXISTS remediations (
   updated_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS remediations_finding ON remediations(finding_id);
+
+CREATE TABLE IF NOT EXISTS sessions (
+  id TEXT PRIMARY KEY,
+  github_user_id INTEGER NOT NULL,
+  github_login TEXT NOT NULL,
+  name TEXT,
+  avatar_url TEXT,
+  granted_by_org TEXT,
+  created_at TEXT NOT NULL,
+  expires_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS sessions_expires ON sessions(expires_at);
 `;
 
 const cache = new Map<string, Db>();

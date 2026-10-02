@@ -1,6 +1,8 @@
 import type { FindingStatus, Qualification, Severity } from "../api";
+import { humanize } from "../format";
+import { SpinnerIcon } from "./Icons";
 
-const SEV_COLORS: Record<Severity, string> = {
+export const SEV_COLOR: Record<Severity, string> = {
   critical: "var(--sev-critical)",
   high: "var(--sev-high)",
   medium: "var(--sev-medium)",
@@ -8,49 +10,63 @@ const SEV_COLORS: Record<Severity, string> = {
   info: "var(--sev-info)",
 };
 
+const PILL = "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium";
+
 export function SeverityBadge({ severity }: { severity: Severity }) {
   return (
     <span
-      className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium"
-      style={{
-        color: SEV_COLORS[severity],
-        border: `1px solid color-mix(in oklab, ${SEV_COLORS[severity]} 45%, transparent)`,
-      }}
+      className={PILL}
+      style={{ color: `var(--sev-${severity}-ink)`, background: `var(--sev-${severity}-bg)` }}
     >
-      <span
-        className="h-1.5 w-1.5 rounded-full"
-        style={{ background: SEV_COLORS[severity] }}
-      />
-      {severity}
+      <span className="h-1.5 w-1.5 rounded-full" style={{ background: SEV_COLOR[severity] }} />
+      {humanize(severity)}
     </span>
   );
 }
 
-const STATUS_LABELS: Record<FindingStatus, { label: string; cls: string }> = {
-  new: { label: "new", cls: "text-sev-high" },
-  open: { label: "open", cls: "text-ink-2" },
-  reopened: { label: "reopened", cls: "text-sev-medium" },
-  resolved: { label: "resolved", cls: "text-good" },
+const STATUS: Record<FindingStatus, string> = {
+  new: "bg-brand-50 text-brand-700 ring-brand-100",
+  open: "bg-surface-2 text-ink-2 ring-line",
+  reopened: "bg-warn-bg text-warn ring-warn/15",
+  resolved: "bg-good-bg text-good ring-good/15",
 };
 
 export function StatusBadge({ status }: { status: FindingStatus }) {
-  const { label, cls } = STATUS_LABELS[status];
   return (
-    <span className={`rounded bg-surface-2 px-1.5 py-0.5 text-xs font-medium ${cls}`}>
-      {label}
-    </span>
+    <span className={`${PILL} ring-1 ring-inset ${STATUS[status]}`}>{humanize(status)}</span>
   );
 }
 
-const QUAL_LABELS: Record<Qualification, { label: string; cls: string }> = {
-  unqualified: { label: "—", cls: "text-ink-3" },
-  qualifying: { label: "qualifying…", cls: "text-accent animate-pulse" },
-  true_positive: { label: "true positive", cls: "text-sev-critical" },
-  false_positive: { label: "false positive", cls: "text-good" },
-  needs_review: { label: "needs review", cls: "text-sev-medium" },
+const QUAL: Record<Exclude<Qualification, "unqualified" | "qualifying">, string> = {
+  true_positive: "bg-bad-bg text-bad",
+  false_positive: "bg-good-bg text-good",
+  needs_review: "bg-warn-bg text-warn",
 };
 
-export function QualificationBadge({ qualification }: { qualification: Qualification }) {
-  const { label, cls } = QUAL_LABELS[qualification];
-  return <span className={`text-xs font-medium ${cls}`}>{label}</span>;
+export function QualificationBadge({
+  qualification,
+  compact = false,
+}: {
+  qualification: Qualification;
+  /** Tables render "not triaged" as a quiet dash. */
+  compact?: boolean;
+}) {
+  if (qualification === "unqualified") {
+    return compact ? (
+      <span className="text-xs text-ink-4" title="Not triaged">
+        —
+      </span>
+    ) : (
+      <span className={`${PILL} bg-surface-2 text-ink-3`}>Not triaged</span>
+    );
+  }
+  if (qualification === "qualifying") {
+    return (
+      <span className={`${PILL} bg-brand-50 text-brand-700`}>
+        <SpinnerIcon size={12} className="animate-spin" />
+        Triaging
+      </span>
+    );
+  }
+  return <span className={`${PILL} ${QUAL[qualification]}`}>{humanize(qualification)}</span>;
 }

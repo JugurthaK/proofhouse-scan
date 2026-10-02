@@ -115,27 +115,25 @@ export interface TimelinePoint {
   countsOpen: number | null;
 }
 
-const TOKEN_KEY = "proofhouse_scan_token";
-
-export function getToken(): string | null {
-  return localStorage.getItem(TOKEN_KEY);
-}
-export function setToken(token: string): void {
-  localStorage.setItem(TOKEN_KEY, token);
-}
-export function clearToken(): void {
-  localStorage.removeItem(TOKEN_KEY);
+export interface SessionUser {
+  login: string;
+  name: string | null;
+  avatarUrl: string | null;
 }
 
+/** Server-side redirect into GitHub's OAuth flow; returns to `next` after. */
+export function githubLoginUrl(next: string | null): string {
+  return `/api/auth/github/login${next ? `?${new URLSearchParams({ next })}` : ""}`;
+}
+
+// Auth is an HttpOnly session cookie set by the GitHub callback; same-origin
+// fetches send it automatically.
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const token = getToken();
-  const headers = new Headers(init?.headers);
-  if (token) headers.set("Authorization", `Bearer ${token}`);
-  const res = await fetch(path, { ...init, headers });
+  const res = await fetch(path, init);
   if (res.status === 401) {
-    clearToken();
     if (window.location.pathname !== "/login") {
-      window.location.assign("/login");
+      const next = window.location.pathname + window.location.search;
+      window.location.assign(`/login?${new URLSearchParams({ next })}`);
     }
     throw new Error("unauthorized");
   }
@@ -147,7 +145,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  authCheck: () => request<{ ok: boolean }>("/api/auth/check"),
+  me: () => request<{ user: SessionUser | null }>("/api/auth/me"),
+  logout: () => request<{ ok: boolean }>("/api/auth/logout", { method: "POST" }),
   repos: () => request<RepoSummary[]>("/api/repos"),
   repo: (id: number) =>
     request<RepoSummary & { scans: Scan[] }>(`/api/repos/${id}`),

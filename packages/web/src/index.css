@@ -1,62 +1,150 @@
 @import "tailwindcss";
 
-/* Single deliberate dark theme — validated dark-surface palette values. */
+/* Light theme — white surfaces, cool slate ink, one blue accent. */
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 
-  --page: #0d0d0d;
-  --surface-1: #1a1a19;
-  --surface-2: #232322;
-  --text-primary: #ffffff;
-  --text-secondary: #c3c2b7;
-  --text-muted: #898781;
-  --gridline: #2c2c2a;
-  --baseline: #383835;
-  --border: rgba(255, 255, 255, 0.1);
+  --page: #f5f7fb;
+  --surface-1: #ffffff;
+  --surface-2: #f3f6fa;
+  --surface-3: #e9eef5;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --text-faint: #94a3b8;
+  --border: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --gridline: #eef2f7;
+  --baseline: #cbd5e1;
 
-  /* Categorical (dark-surface steps, fixed order) */
-  --series-1: #3987e5; /* blue */
-  --series-2: #d95926; /* orange */
-  --series-3: #199e70; /* aqua */
+  --brand-50: #eff5ff;
+  --brand-100: #dbe8fe;
+  --brand-200: #bfd5fe;
+  --brand-300: #93b7fd;
+  --brand-500: #3b7cf6;
+  --brand-600: #2563eb;
+  --brand-700: #1d4ed8;
+  --brand-800: #1e40af;
 
-  /* Severity — status palette + blue/gray for low/info (labels always shown) */
-  --sev-critical: #d03b3b;
-  --sev-high: #ec835a;
-  --sev-medium: #fab219;
-  --sev-low: #3987e5;
-  --sev-info: #898781;
+  /* Severity — validated as an adjacent set on #ffffff (CVD ΔE ≥ 11). Always
+     paired with a text label: medium/info sit below 3:1 against white. */
+  --sev-critical: #b91c3c;
+  --sev-high: #ea5f16;
+  --sev-medium: #e6a700;
+  --sev-low: #3070d8;
+  --sev-info: #a6afbc;
 
-  --status-good: #0ca30c;
-  --status-warning: #fab219;
-  --status-critical: #d03b3b;
+  /* Text-safe (≥ 4.5:1) companions for tinted badges. */
+  --sev-critical-ink: #a3173a;
+  --sev-critical-bg: #fdeef1;
+  --sev-high-ink: #b2440c;
+  --sev-high-bg: #fff1e8;
+  --sev-medium-ink: #8a5d00;
+  --sev-medium-bg: #fff6db;
+  --sev-low-ink: #1f56b3;
+  --sev-low-bg: #ecf3fe;
+  --sev-info-ink: #556070;
+  --sev-info-bg: #f1f4f7;
+
+  --status-good: #15803d;
+  --status-good-bg: #ecfdf3;
+  --status-warning: #8a5d00;
+  --status-warning-bg: #fff6db;
+  --status-critical: #b91c3c;
+  --status-critical-bg: #fdeef1;
 }
 
 @theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+
   --color-page: var(--page);
   --color-surface-1: var(--surface-1);
   --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
   --color-ink: var(--text-primary);
   --color-ink-2: var(--text-secondary);
   --color-ink-3: var(--text-muted);
+  --color-ink-4: var(--text-faint);
   --color-line: var(--border);
+  --color-line-strong: var(--border-strong);
   --color-grid: var(--gridline);
+
+  --color-brand-50: var(--brand-50);
+  --color-brand-100: var(--brand-100);
+  --color-brand-200: var(--brand-200);
+  --color-brand-300: var(--brand-300);
+  --color-brand-500: var(--brand-500);
+  --color-brand-600: var(--brand-600);
+  --color-brand-700: var(--brand-700);
+  --color-brand-800: var(--brand-800);
+  --color-accent: var(--brand-600);
+
   --color-sev-critical: var(--sev-critical);
   --color-sev-high: var(--sev-high);
   --color-sev-medium: var(--sev-medium);
   --color-sev-low: var(--sev-low);
   --color-sev-info: var(--sev-info);
-  --color-accent: var(--series-1);
+
   --color-good: var(--status-good);
+  --color-good-bg: var(--status-good-bg);
+  --color-warn: var(--status-warning);
+  --color-warn-bg: var(--status-warning-bg);
+  --color-bad: var(--status-critical);
+  --color-bad-bg: var(--status-critical-bg);
+
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.04), 0 1px 3px rgb(15 23 42 / 0.03);
+  --shadow-pop: 0 8px 24px rgb(15 23 42 / 0.10), 0 2px 6px rgb(15 23 42 / 0.06);
+}
+
+html,
+body {
+  background: var(--page);
 }
 
 body {
-  background: var(--page);
   color: var(--text-primary);
-  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 code,
 pre,
+kbd,
 .mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--font-mono);
+}
+
+:focus-visible {
+  outline: 2px solid var(--brand-500);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+::selection {
+  background: var(--brand-100);
+}
+
+/* Native selects styled as quiet pills with our own chevron. */
+select.select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.5rem center;
+  background-size: 14px;
+  padding-right: 1.75rem;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+.scrollbar-none {
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
 }

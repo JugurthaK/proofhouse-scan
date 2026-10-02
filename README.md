@@ -125,23 +125,45 @@ with a persistent volume. A multi-stage `Dockerfile` is included:
 ```sh
 docker build -t proofhouse-scan .
 docker run -p 8790:8790 -v proofhouse-scan-data:/data \
-  -e PROOFHOUSE_SCAN_API_TOKEN=$(openssl rand -hex 32) \
+  -e GITHUB_OAUTH_CLIENT_ID=... -e GITHUB_OAUTH_CLIENT_SECRET=... \
+  -e PROOFHOUSE_SCAN_ALLOWED_USERS=alice,bob \
   -e PROOFHOUSE_SCAN_INGEST_TOKEN=$(openssl rand -hex 32) \
   proofhouse-scan
 ```
 
-- `PROOFHOUSE_SCAN_API_TOKEN` protects the UI and all API routes (the web app shows a
-  login screen asking for it). `PROOFHOUSE_SCAN_INGEST_TOKEN` protects `POST
-  /api/ingest`. Leave both unset for a local, open instance.
+- **Web UI sign-in is via GitHub.** Create an OAuth App (GitHub → Settings →
+  Developer settings → OAuth Apps → New OAuth App) with the authorization
+  callback URL `https://<your-host>/api/auth/github/callback`, then set
+  `GITHUB_OAUTH_CLIENT_ID` / `GITHUB_OAUTH_CLIENT_SECRET` and an allowlist:
+  - `PROOFHOUSE_SCAN_ALLOWED_USERS` — comma-separated GitHub logins.
+  - `PROOFHOUSE_SCAN_ALLOWED_ORGS` — comma-separated orgs; active members are
+    admitted. This makes sign-in request the `read:org` scope, and orgs with
+    OAuth App access restrictions must approve the app.
+
+  At least one allowlist is required — the server refuses to start otherwise,
+  since GitHub alone would admit every GitHub account. Sessions last 7 days
+  (HttpOnly cookie, `Secure` when served over HTTPS). Removing someone from
+  the allowlist and restarting revokes their sessions; a user removed from
+  an allowlisted org on GitHub keeps access until their session expires.
+- For local development against the OAuth flow, register a second OAuth App
+  with callback `http://localhost:5173/api/auth/github/callback` (Vite dev
+  server) or `http://localhost:8790/api/auth/github/callback` (`serve`).
+- `PROOFHOUSE_SCAN_INGEST_TOKEN` protects `POST /api/ingest` (the GitHub
+  Action). Ingest never accepts browser sessions, so with GitHub sign-in
+  enabled it stays closed until this token is set.
+- `PROOFHOUSE_SCAN_API_TOKEN` (optional) is a Bearer token for scripts calling
+  the API directly; it no longer signs in to the web UI. Ingest falls back to
+  it when no ingest token is set.
+- Leave everything unset for a local, open instance.
 - Health check endpoint: `GET /api/health` (public).
 - Fly.io: `fly launch --no-deploy`, `fly volumes create proofhouse-scan_data`, mount
   it at `/data` in fly.toml (`internal_port = 8790`), then
-  `fly secrets set PROOFHOUSE_SCAN_API_TOKEN=... PROOFHOUSE_SCAN_INGEST_TOKEN=...`.
+  `fly secrets set GITHUB_OAUTH_CLIENT_ID=... GITHUB_OAUTH_CLIENT_SECRET=... PROOFHOUSE_SCAN_ALLOWED_USERS=... PROOFHOUSE_SCAN_INGEST_TOKEN=...`.
 - To use qualify/remediate/rescan on the hosted instance, also set
   `GITHUB_TOKEN`, `PROOFHOUSE_SCAN_REPO`, and your LLM key there; without them the
   instance is ingest + dashboard only.
 - SQLite means one machine — do not scale horizontally.
-- Token changes require a server restart (env is read at startup).
+- Auth config changes require a server restart (env is read at startup).
 
 ## Testing with the fixture repo
 
