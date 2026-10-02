@@ -1,12 +1,17 @@
 import {
+  CATEGORIES,
+  FINDING_STATUSES,
   findings,
+  QUALIFICATIONS,
   qualifications,
   remediations,
   repos,
+  SCANNERS,
+  SEVERITIES,
+  UNRESOLVED_STATUSES,
   type Db,
-  type Finding,
 } from "@proofhouse-scan/core";
-import { and, desc, eq, gte, lte, sql, type SQL } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, lte, sql, type SQL } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 
 const SEVERITY_ORDER = sql.raw(
@@ -21,31 +26,98 @@ interface FindingsQuery {
   status?: string;
   category?: string;
   qualification?: string;
+  q?: string;
   page?: string;
   page_size?: string;
 }
 
-export function registerFindingRoutes(app: FastifyInstance, db: Db): void {
-  app.get<{ Querystring: FindingsQuery }>("/api/findings", (request) => {
-    const q = request.query;
-    const page = Math.max(1, Number(q.page ?? 1));
-    const pageSize = Math.min(200, Math.max(1, Number(q.page_size ?? 50)));
+class BadFilter extends Error {}
 
-    const conditions: SQL[] = [];
-    if (q.repo_id) conditions.push(eq(findings.repoId, Number(q.repo_id)));
-    if (q.scan_id) {
-      // Findings present in that scan: first seen at or before it, last seen
-      // at or after it (approximation without a per-scan junction table).
-      const scanId = Number(q.scan_id);
-      conditions.push(lte(findings.firstSeenScanId, scanId));
-      conditions.push(gte(findings.lastSeenScanId, scanId));
+function csv(raw: string): string[] {
+  return [...new Set(raw.split(",").map((v) => v.trim()).filter(Boolean))];
+}
+
+/** Comma-separated filter values ("critical,high"), checked against the column's enum. */
+function enumList<T extends string>(raw: string | undefined, allowed: readonly T[], label: string): T[] | null {
+  if (!raw) return null;
+  const values = csv(raw);
+  const unknown = values.filter((v) => !(allowed as readonly string[]).includes(v));
+  if (unknown.length > 0) {
+    throw new BadFilter(`Unknown ${label}: ${unknown.join(", ")}. Expected one of: ${allowed.join(", ")}`);
+  }
+  return values as T[];
+}
+
+function intList(raw: string | undefined, label: string): number[] | null {
+  if (!raw) return null;
+  const values = csv(raw).map(Number);
+  if (values.some((n) => !Number.isInteger(n))) throw new BadFilter(`Invalid ${label}: ${raw}`);
+  return values;
+}
+
+function int(raw: string | undefined, fallback: number): number {
+  const n = Number.parseInt(raw ?? "", 10);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+/** Escapes LIKE wildcards so a search for "100%" matches literally. */
+function likeContains(term: string): string {
+  return `%${term.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+}
+
+function buildConditions(q: FindingsQuery): SQL[] {
+  const conditions: SQL[] = [];
+  const repoIds = intList(q.repo_id, "repo_id");
+  if (repoIds) conditions.push(inArray(findings.repoId, repoIds));
+  if (q.scan_id) {
+    // Findings present in that scan: first seen at or before it, last seen
+    // at or after it (approximation without a per-scan junction table).
+    const scanId = Number(q.scan_id);
+    if (!Number.isInteger(scanId)) throw new BadFilter(`Invalid scan_id: ${q.scan_id}`);
+    conditions.push(lte(findings.firstSeenScanId, scanId));
+    conditions.push(gte(findings.lastSeenScanId, scanId));
+  }
+
+  // "unresolved" = new + open + reopened, the set stats and repo counts report.
+  const status = q.status
+    ?.split(",")
+    .flatMap((v) => (v.trim() === "unresolved" ? UNRESOLVED_STATUSES : [v]))
+    .join(",");
+  const filters = [
+    [findings.scanner, enumList(q.scanner, SCANNERS, "scanner")],
+    [findings.severity, enumList(q.severity, SEVERITIES, "severity")],
+    [findings.status, enumList(status, FINDING_STATUSES, "status")],
+    [findings.category, enumList(q.category, CATEGORIES, "category")],
+    [findings.qualification, enumList(q.qualification, QUALIFICATIONS, "qualification")],
+  ] as const;
+  for (const [column, values] of filters) {
+    if (values) conditions.push(inArray(column, values));
+  }
+
+  const term = q.q?.trim();
+  if (term) {
+    const pattern = likeContains(term);
+    // SQLite LIKE is case-insensitive for ASCII.
+    conditions.push(
+      sql`(${findings.ruleId} LIKE ${pattern} ESCAPE '\\' OR ${findings.message} LIKE ${pattern} ESCAPE '\\' OR ${findings.filePath} LIKE ${pattern} ESCAPE '\\')`,
+    );
+  }
+  return conditions;
+}
+
+export function registerFindingRoutes(app: FastifyInstance, db: Db): void {
+  app.get<{ Querystring: FindingsQuery }>("/api/findings", (request, reply) => {
+    const q = request.query;
+    const page = Math.max(1, int(q.page, 1));
+    const pageSize = Math.min(200, Math.max(1, int(q.page_size, 50)));
+
+    let conditions: SQL[];
+    try {
+      conditions = buildConditions(q);
+    } catch (err) {
+      if (err instanceof BadFilter) return reply.code(400).send({ error: err.message });
+      throw err;
     }
-    if (q.scanner) conditions.push(eq(findings.scanner, q.scanner as Finding["scanner"]));
-    if (q.severity) conditions.push(eq(findings.severity, q.severity as Finding["severity"]));
-    if (q.status) conditions.push(eq(findings.status, q.status as Finding["status"]));
-    if (q.category) conditions.push(eq(findings.category, q.category as Finding["category"]));
-    if (q.qualification)
-      conditions.push(eq(findings.qualification, q.qualification as Finding["qualification"]));
     const where = conditions.length > 0 ? and(...conditions) : undefined;
 
     const total = db

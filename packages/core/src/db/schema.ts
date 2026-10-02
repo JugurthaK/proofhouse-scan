@@ -17,6 +17,8 @@ export type Severity = (typeof SEVERITIES)[number];
 
 export const FINDING_STATUSES = ["new", "open", "resolved", "reopened"] as const;
 export type FindingStatus = (typeof FINDING_STATUSES)[number];
+/** Findings that still need attention — everything but "resolved". */
+export const UNRESOLVED_STATUSES = ["new", "open", "reopened"] as const satisfies readonly FindingStatus[];
 
 export const QUALIFICATIONS = [
   "unqualified",

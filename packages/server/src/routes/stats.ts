@@ -1,4 +1,4 @@
-import { findings, scans, type Db } from "@proofhouse-scan/core";
+import { findings, scans, UNRESOLVED_STATUSES, type Db } from "@proofhouse-scan/core";
 import { and, asc, eq, inArray, sql, type SQL } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 
@@ -6,9 +6,7 @@ export function registerStatsRoutes(app: FastifyInstance, db: Db): void {
   app.get<{ Querystring: { repo_id?: string } }>(
     "/api/stats/summary",
     (request) => {
-      const conditions: SQL[] = [
-        inArray(findings.status, ["new", "open", "reopened"]),
-      ];
+      const conditions: SQL[] = [inArray(findings.status, UNRESOLVED_STATUSES)];
       if (request.query.repo_id) {
         conditions.push(eq(findings.repoId, Number(request.query.repo_id)));
       }
