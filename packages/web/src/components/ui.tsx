@@ -14,7 +14,7 @@ export const btn = {
 
 export function usePageTitle(title: string | null | undefined) {
   useEffect(() => {
-    document.title = title ? `${title} · proofhouse-scan` : "proofhouse-scan";
+    document.title = title ? `${title} · Proofhouse Scan` : "Proofhouse Scan";
   }, [title]);
 }
 

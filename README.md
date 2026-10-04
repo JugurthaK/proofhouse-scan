@@ -59,7 +59,6 @@ Prereqs: Node 22+, pnpm, a GitHub account.
    ```
 
 3. **Configure `.env`** (copy `.env.example`):
-
    - `GITHUB_TOKEN` — classic PAT with `repo` + `workflow` scopes
    - `PROOFHOUSE_SCAN_REPO` — `<you>/proofhouse-scan` (where scan.yml lives)
    - `LLM_PROVIDER` / `LLM_MODEL` — default `anthropic` / `claude-opus-5`
@@ -145,6 +144,7 @@ docker run -p 8790:8790 -v proofhouse-scan-data:/data \
   (HttpOnly cookie, `Secure` when served over HTTPS). Removing someone from
   the allowlist and restarting revokes their sessions; a user removed from
   an allowlisted org on GitHub keeps access until their session expires.
+
 - For local development against the OAuth flow, register a second OAuth App
   with callback `http://localhost:5173/api/auth/github/callback` (Vite dev
   server) or `http://localhost:8790/api/auth/github/callback` (`serve`).

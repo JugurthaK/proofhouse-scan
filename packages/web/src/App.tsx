@@ -2,7 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, matchPath, NavLink, Outlet, ScrollRestoration, useLocation } from "react-router-dom";
 import { api, type SessionUser } from "./api";
-import { ListIcon, LogOutIcon, MenuIcon, OverviewIcon, SearchIcon, ShieldCheckIcon, XIcon } from "./components/Icons";
+import { ListIcon, LogOutIcon, MenuIcon, OverviewIcon, SearchIcon, XIcon } from "./components/Icons";
+import { Logo } from "./components/Logo";
 import { RepoAvatar } from "./components/ui";
 import { byName, formatCount } from "./format";
 
@@ -14,13 +15,8 @@ async function signOut() {
 
 function Brand() {
   return (
-    <Link to="/" className="flex items-center gap-2.5">
-      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600 text-white shadow-sm">
-        <ShieldCheckIcon size={18} />
-      </span>
-      <span className="text-[15px] font-semibold tracking-tight text-ink">
-        proofhouse<span className="font-normal text-ink-3">-scan</span>
-      </span>
+    <Link to="/" aria-label="Proofhouse Scan, overview" className="flex items-center">
+      <Logo height={28} />
     </Link>
   );
 }
