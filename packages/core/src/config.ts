@@ -19,9 +19,6 @@ const envSchema = z.object({
   GITLAB_TOKEN: z.string().optional(),
   GITLAB_TOKENS: z.string().optional(),
   GITLAB_SCAN_PROJECTS: z.string().optional(),
-  LLM_PROVIDER: z.enum(["anthropic", "openai"]).default("anthropic"),
-  LLM_MODEL: z.string().default("claude-opus-5"),
-    .regex(/^[^/]+\/[^/]+$/, "PROOFHOUSE_SCAN_REPO must be owner/repo"),
   LLM_PROVIDER: z
     .enum(["anthropic", "openai", "ollama", "openai-compatible"])
     .default("anthropic"),

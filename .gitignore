@@ -9,3 +9,4 @@ dist/
 coverage/
 fixtures/proofhouse-scan-fixture/repo/
 promo/
+.claude/worktrees/
