@@ -15,6 +15,7 @@ export * from "./github/pr.js";
 export * from "./gitlab/client.js";
 export * from "./gitlab/content.js";
 export * from "./gitlab/mr.js";
+export * from "./gitlab/pipeline.js";
 export * from "./scan/run-scan.js";
 export * from "./scan/reconcile.js";
 export * from "./scan/ingest.js";

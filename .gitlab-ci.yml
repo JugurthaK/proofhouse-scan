@@ -1,15 +1,145 @@
-# CI for the proofhouse-scan project itself, once mirrored to GitLab — not for
+# CI for the proofhouse-scan project itself, once pushed to GitLab — not for
 # target projects (those include templates/scan.yml as a CI/CD component).
 #
-# Pushing a semver tag (e.g. 1.0.0) publishes the component to the CI/CD
-# Catalog. The Catalog only accepts releases created by the `release` keyword.
+# Two kinds of pipeline run here:
+#
+# - Dispatched scans, the GitLab counterpart of .github/workflows/scan.yml.
+#   `proofhouse-scan scan gitlab.com/group/project` creates a pipeline with
+#   the inputs below; the jobs clone the target from this instance and leave
+#   SARIF artifacts for the backend to download. Private targets need either
+#   a masked TARGET_REPO_TOKEN CI/CD variable (a token that can read them) or
+#   this project in each target's job token allowlist.
+#
+# - Releases: pushing a semver tag (e.g. 1.0.0) publishes the component to
+#   the CI/CD Catalog, which only accepts releases made by the `release` keyword.
+#
+# Inputs are validated by regex, so interpolating them below is safe.
+spec:
+  inputs:
+    target_project:
+      description: "Project to scan, as its path on this instance (group/subgroup/project). Empty = not a scan."
+      default: ""
+      regex: ^(\w[\w.-]*(/\w[\w.-]*)+)?$
+    target_ref:
+      description: "Branch, tag, or commit to scan (empty = default branch)"
+      default: ""
+      regex: ^(\w[\w./-]*)?$
+    correlation_id:
+      description: "Client-generated UUID used to correlate the dispatched pipeline"
+      default: ""
+      regex: ^([0-9a-f-]{36})?$
+---
 workflow:
+  name: $PROOFHOUSE_SCAN_PIPELINE_NAME
   rules:
+    - if: '"$[[ inputs.target_project ]]" != ""'
+      variables:
+        PROOFHOUSE_SCAN_PIPELINE_NAME: "proofhouse-scan $[[ inputs.target_project ]] [$[[ inputs.correlation_id ]]]"
     - if: $CI_COMMIT_TAG =~ /^\d+\.\d+\.\d+$/
+      variables:
+        PROOFHOUSE_SCAN_PIPELINE_NAME: "Publish component $CI_COMMIT_TAG"
+
+# Shared by the scan jobs: clone the target into ./target instead of this
+# project. Job names and artifact files are what the backend downloads
+# (packages/core/src/gitlab/pipeline.ts).
+.scan:
+  stage: test
+  rules:
+    - if: '"$[[ inputs.target_project ]]" != ""'
+  variables:
+    GIT_STRATEGY: none
+    GIT_TERMINAL_PROMPT: "0" # fail instead of waiting for credentials
+    TARGET_PROJECT: "$[[ inputs.target_project ]]"
+    TARGET_REF: "$[[ inputs.target_ref ]]"
+    CLONE_DEPTH: "1"
+  before_script:
+    - |
+      # GIT_STRATEGY none leaves the build dir as the last job left it.
+      rm -rf target meta.json opengrep.sarif trivy.sarif gitleaks.sarif
+      if [ -n "${TARGET_REPO_TOKEN:-}" ]; then
+        auth="oauth2:$TARGET_REPO_TOKEN@"
+      else
+        auth="gitlab-ci-token:$CI_JOB_TOKEN@"
+      fi
+      repo="$CI_SERVER_FQDN/$TARGET_PROJECT.git"
+      args="--quiet"
+      checkout="$TARGET_REF"
+      # --branch takes branches and tags; commits need a full clone + checkout.
+      if [ "$CLONE_DEPTH" != "full" ] && ! printf '%s' "$TARGET_REF" | grep -Eq '^[0-9a-f]{40}$'; then
+        args="$args --depth $CLONE_DEPTH"
+        if [ -n "$TARGET_REF" ]; then args="$args --branch $TARGET_REF"; fi
+        checkout=""
+      fi
+      # Retry anonymously for public targets the job token can't reach. No
+      # credential helper, so a failed auth fails fast instead of prompting.
+      git -c credential.helper= clone $args "$CI_SERVER_PROTOCOL://$auth$repo" target \
+        || { rm -rf target; git -c credential.helper= clone $args "$CI_SERVER_PROTOCOL://$repo" target; }
+      if [ -n "$checkout" ]; then git -C target checkout --quiet "$checkout"; fi
+
+meta:
+  extends: .scan
+  image: buildpack-deps:bookworm-scm
+  script:
+    - |
+      printf '{"target_project":"%s","commit_sha":"%s"}\n' \
+        "$TARGET_PROJECT" "$(git -C target rev-parse HEAD)" > meta.json
+  artifacts:
+    paths: [meta.json]
+    expire_in: 1 day
+    access: developer # SARIF can hold secrets; the backend's token has Developer
+
+opengrep:
+  extends: .scan
+  image: buildpack-deps:bookworm-scm # git + bash + curl for the opengrep installer
+  script:
+    - |
+      curl -fsSL https://raw.githubusercontent.com/opengrep/opengrep/main/install.sh | bash
+      export PATH="$HOME/.opengrep/cli/latest:$PATH"
+      opengrep scan --config auto --sarif --output opengrep.sarif target/ || true
+      # Guarantee a valid SARIF artifact even if the scan crashed
+      [ -s opengrep.sarif ] || echo '{"version":"2.1.0","runs":[]}' > opengrep.sarif
+  artifacts:
+    paths: [opengrep.sarif]
+    expire_in: 1 day
+    access: developer # SARIF can hold secrets; the backend's token has Developer
+
+trivy:
+  extends: .scan
+  image:
+    name: aquasec/trivy:0.70.0 # same version as the GitHub workflow's trivy-action
+    entrypoint: [""]
+  variables:
+    TRIVY_CACHE_DIR: .trivycache
+  cache:
+    key: proofhouse-scan-trivy
+    paths: [.trivycache/]
+  script:
+    - trivy fs --scanners vuln,misconfig --format sarif --exit-code 0 --output trivy.sarif target
+  artifacts:
+    paths: [trivy.sarif]
+    expire_in: 1 day
+    access: developer # SARIF can hold secrets; the backend's token has Developer
+
+gitleaks:
+  extends: .scan
+  image:
+    name: ghcr.io/gitleaks/gitleaks:v8.21.2
+    entrypoint: [""]
+  variables:
+    CLONE_DEPTH: full # full history so GitLeaks can scan past commits
+  script:
+    - gitleaks detect --source target --report-format sarif --report-path gitleaks.sarif --exit-code 0
+    - '[ -s gitleaks.sarif ] || echo ''{"version":"2.1.0","runs":[]}'' > gitleaks.sarif'
+  artifacts:
+    paths: [gitleaks.sarif]
+    expire_in: 1 day
+    access: developer # SARIF can hold secrets; the backend's token has Developer
 
 publish-component:
   stage: deploy
   image: registry.gitlab.com/gitlab-org/cli:latest
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^\d+\.\d+\.\d+$/
   script:
     - echo "Publishing proofhouse-scan component $CI_COMMIT_TAG"
   release:

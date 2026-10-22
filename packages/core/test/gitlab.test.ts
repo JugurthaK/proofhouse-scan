@@ -1,44 +1,12 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { parseGitlabTokens } from "../src/config.js";
+import { parseGitlabScanProjects, parseGitlabTokens } from "../src/config.js";
 import { GitlabApiError } from "../src/gitlab/client.js";
 import { fetchGitlabFileContent } from "../src/gitlab/content.js";
 import { createFixMr } from "../src/gitlab/mr.js";
 import { fetchRepoFile } from "../src/scm/index.js";
 import { parseRepoRef } from "../src/scm/ref.js";
+import { GITLAB_API as API, stubGitlab, type GitlabRoute as Route } from "./gitlab-stub.js";
 
-interface Call {
-  method: string;
-  url: string;
-  token: string | null;
-  body: unknown;
-}
-
-type Route = { status?: number; json?: unknown; text?: string };
-
-/** Stub fetch with exact "METHOD url" routes; unmatched requests 404. */
-function stubGitlab(routes: Record<string, Route>): Call[] {
-  const calls: Call[] = [];
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(async (url: string, init: RequestInit = {}) => {
-      const method = init.method ?? "GET";
-      const headers = new Headers(init.headers);
-      calls.push({
-        method,
-        url,
-        token: headers.get("private-token"),
-        body: init.body ? JSON.parse(String(init.body)) : undefined,
-      });
-      const route = routes[`${method} ${url}`];
-      if (!route) return new Response(JSON.stringify({ message: "404 Not Found" }), { status: 404 });
-      const body = method === "HEAD" ? null : route.json !== undefined ? JSON.stringify(route.json) : (route.text ?? "");
-      return new Response(body, { status: route.status ?? 200 });
-    }),
-  );
-  return calls;
-}
-
-const API = "https://gitlab.com/api/v4";
 const PROJECT = `${API}/projects/acme%2Fplatform%2Fapi`;
 
 beforeAll(() => {
@@ -77,6 +45,20 @@ describe("parseGitlabTokens", () => {
       expect(err?.message, bad).toMatch(/Invalid GITLAB_TOKENS entry #1/);
       expect(err?.message).not.toContain("secret");
     }
+  });
+});
+
+describe("parseGitlabScanProjects", () => {
+  it("maps hosts to scan project paths", () => {
+    expect(
+      Object.fromEntries(parseGitlabScanProjects("gitlab.com=me/proofhouse-scan, http://localhost:8929=sec/tools/scan")),
+    ).toEqual({ "gitlab.com": "me/proofhouse-scan", "localhost:8929": "sec/tools/scan" });
+  });
+
+  it("rejects paths without a namespace", () => {
+    expect(() => parseGitlabScanProjects("gitlab.com=proofhouse-scan")).toThrow(
+      /Invalid GITLAB_SCAN_PROJECTS entry #1/,
+    );
   });
 });
 

@@ -76,10 +76,13 @@ Prereqs: Node 22+, pnpm, a GitHub account.
 4. **(Private targets only)** add a repo secret `TARGET_REPO_TOKEN` in the
    proofhouse-scan GitHub repo: a PAT that can read the private target repos.
 
+5. **(GitLab targets)** see [Central scans of GitLab projects](#central-scans-of-gitlab-projects).
+
 ## Usage
 
 ```sh
 pnpm proofhouse-scan scan owner/repo        # dispatch a scan, wait, ingest findings
+pnpm proofhouse-scan scan gitlab.com/group/sub/project   # same, on GitLab
 pnpm proofhouse-scan list --severity high   # query findings from the terminal
 pnpm proofhouse-scan repos                  # scanned repos + open counts
 pnpm proofhouse-scan serve                  # web UI at http://localhost:8790
@@ -91,6 +94,38 @@ pnpm proofhouse-scan remediate <finding-id> # generates a fix and opens a PR
 
 For development: `pnpm --filter @proofhouse-scan/server dev` (API) and
 `pnpm --filter @proofhouse-scan/web dev` (frontend with proxy) in two terminals.
+
+## Central scans of GitLab projects
+
+The root `.gitlab-ci.yml` is the GitLab counterpart of `scan.yml`. Each GitLab
+instance you scan gets its own copy of this repo — a **scan project** — so
+the runners doing the work sit next to the targets, even behind a firewall.
+
+1. Push this repo to a **private** project on each instance (e.g.
+   `security/proofhouse-scan`). Pushes run nothing; pipelines start only with
+   the inputs set by dispatch. Keep it separate from the public component
+   project on gitlab.com: pipeline names show which targets were scanned, and
+   while artifacts are restricted to Developers (`artifacts:access`), the
+   SARIF they hold — secrets included — should not live in a public project.
+2. Map each host to its scan project, next to the tokens:
+
+   ```sh
+   GITLAB_TOKENS=gitlab.com=glpat-…,git.corp.io=glpat-…
+   GITLAB_SCAN_PROJECTS=gitlab.com=you/proofhouse-scan,git.corp.io=security/proofhouse-scan
+   ```
+
+   The token's user needs the Developer role on the scan project (to run
+   pipelines and read their artifacts).
+3. **Private targets:** in the scan project, add a masked CI/CD variable
+   `TARGET_REPO_TOKEN` with a token that can read them (`read_repository`).
+   Without it the jobs use their job token, which works only for targets that
+   list the scan project in Settings → CI/CD → Job token permissions.
+
+`proofhouse-scan scan gitlab.com/group/project [--ref <branch|tag|sha>]` (or
+**Rescan** in the UI) creates a pipeline with the target as
+[pipeline inputs](https://docs.gitlab.com/ci/inputs/) — GitLab.com blocks
+pipeline variables by default on new projects, and inputs are validated by
+regex before they reach the job scripts. Requires GitLab 18.1+.
 
 ## Scan from your own CI (composite action)
 

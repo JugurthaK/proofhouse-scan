@@ -54,6 +54,7 @@ proofhouse-scan:opengrep:
   artifacts:
     paths: [.proofhouse-scan/opengrep.sarif]
     expire_in: 1 day
+    access: developer # SARIF can hold secrets; the report job still gets it
 
 proofhouse-scan:trivy:
   extends: .proofhouse-scan
@@ -76,6 +77,7 @@ proofhouse-scan:trivy:
   artifacts:
     paths: [.proofhouse-scan/trivy.sarif]
     expire_in: 1 day
+    access: developer # SARIF can hold secrets; the report job still gets it
 
 proofhouse-scan:gitleaks:
   extends: .proofhouse-scan
@@ -98,6 +100,7 @@ proofhouse-scan:gitleaks:
   artifacts:
     paths: [.proofhouse-scan/gitleaks.sarif]
     expire_in: 1 day
+    access: developer # SARIF can hold secrets; the report job still gets it
 
 proofhouse-scan:report:
   extends: .proofhouse-scan

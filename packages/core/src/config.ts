@@ -18,6 +18,7 @@ const envSchema = z.object({
     .optional(),
   GITLAB_TOKEN: z.string().optional(),
   GITLAB_TOKENS: z.string().optional(),
+  GITLAB_SCAN_PROJECTS: z.string().optional(),
   LLM_PROVIDER: z.enum(["anthropic", "openai"]).default("anthropic"),
   LLM_MODEL: z.string().default("claude-opus-5"),
   ANTHROPIC_API_KEY: z.string().optional(),
@@ -43,6 +44,8 @@ export type ProofhouseScanConfig = z.infer<typeof envSchema> & {
   dbPath: string;
   /** GitLab instances by lowercased host (with port), from GITLAB_TOKEN(S). */
   gitlabHosts: Map<string, GitlabHost>;
+  /** Dispatch scan project path by GitLab host, from GITLAB_SCAN_PROJECTS. */
+  gitlabScanProjects: Map<string, string>;
 };
 
 function expandHome(p: string): string {
@@ -50,38 +53,70 @@ function expandHome(p: string): string {
 }
 
 /**
- * GITLAB_TOKENS is a comma-separated list of `host=token`; the host may be a
- * URL to pick the scheme (`http://localhost:8080=glpat-…`), else https.
- * GITLAB_TOKEN is shorthand for gitlab.com.
+ * Parse a comma-separated `host=value` list. The host may be a URL to pick
+ * the scheme (`http://localhost:8080=…`), else https. Errors never echo the
+ * entry: with a missing "=" it could be a token.
  */
-export function parseGitlabTokens(
+function parseHostList(
   list: string | undefined,
-  single: string | undefined,
-): Map<string, GitlabHost> {
-  const hosts = new Map<string, GitlabHost>();
+  name: string,
+  example: string,
+  isValid: (value: string) => boolean = () => true,
+): { host: string; origin: string; value: string }[] {
   const entries = (list ?? "").split(",").map((s) => s.trim()).filter(Boolean);
-  entries.forEach((entry, i) => {
+  return entries.map((entry, i) => {
     const eq = entry.indexOf("=");
     const key = eq > 0 ? entry.slice(0, eq).trim() : "";
-    const token = eq > 0 ? entry.slice(eq + 1).trim() : "";
+    const value = eq > 0 ? entry.slice(eq + 1).trim() : "";
     let url: URL | null = null;
     try {
       url = new URL(/^https?:\/\//i.test(key) ? key : `https://${key}`);
     } catch {
       // reported below
     }
-    if (!key || !token || !url || url.pathname !== "/") {
-      // Never echo the entry: a missing "=" would print the token itself.
-      throw new Error(
-        `Invalid GITLAB_TOKENS entry #${i + 1} — expected host=token, e.g. gitlab.com=glpat-…`,
-      );
+    if (!key || !value || !url || url.pathname !== "/" || !isValid(value)) {
+      throw new Error(`Invalid ${name} entry #${i + 1} — expected ${example}`);
     }
-    hosts.set(url.host, { baseUrl: url.origin, token });
+    return { host: url.host, origin: url.origin, value };
   });
+}
+
+/**
+ * GITLAB_TOKENS is a comma-separated list of `host=token`, one per GitLab
+ * instance. GITLAB_TOKEN is shorthand for gitlab.com.
+ */
+export function parseGitlabTokens(
+  list: string | undefined,
+  single: string | undefined,
+): Map<string, GitlabHost> {
+  const hosts = new Map<string, GitlabHost>();
+  for (const { host, origin, value } of parseHostList(
+    list,
+    "GITLAB_TOKENS",
+    "host=token, e.g. gitlab.com=glpat-…",
+  )) {
+    hosts.set(host, { baseUrl: origin, token: value });
+  }
   if (single && !hosts.has("gitlab.com")) {
     hosts.set("gitlab.com", { baseUrl: "https://gitlab.com", token: single });
   }
   return hosts;
+}
+
+/**
+ * GITLAB_SCAN_PROJECTS maps each GitLab host to the project (on that host)
+ * whose .gitlab-ci.yml runs dispatched scans, e.g.
+ * `gitlab.com=you/proofhouse-scan,git.corp.io=security/proofhouse-scan`.
+ */
+export function parseGitlabScanProjects(list: string | undefined): Map<string, string> {
+  return new Map(
+    parseHostList(
+      list,
+      "GITLAB_SCAN_PROJECTS",
+      "host=group/project, e.g. gitlab.com=you/proofhouse-scan",
+      (path) => /^[\w.-]+(\/[\w.-]+)+$/.test(path),
+    ).map(({ host, value }) => [host, value]),
+  );
 }
 
 /** owner/repo of the GitHub repo hosting scan.yml, for dispatch mode. */
@@ -118,6 +153,7 @@ export function getConfig(): ProofhouseScanConfig {
     ...env,
     dbPath: resolve(expandHome(env.PROOFHOUSE_SCAN_DB_PATH)),
     gitlabHosts: parseGitlabTokens(env.GITLAB_TOKENS, env.GITLAB_TOKEN),
+    gitlabScanProjects: parseGitlabScanProjects(env.GITLAB_SCAN_PROJECTS),
   };
   return cached;
 }
