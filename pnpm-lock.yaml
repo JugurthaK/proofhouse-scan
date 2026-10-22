@@ -4,6 +4,10 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  ollama-ai-provider-v2>@ai-sdk/provider: 4.0.14
+  ollama-ai-provider-v2>@ai-sdk/provider-utils: 5.0.40
+
 importers:
 
   .: {}
@@ -16,6 +20,9 @@ importers:
       '@ai-sdk/openai':
         specifier: ^4.0.66
         version: 4.0.66(zod@4.6.5)
+      '@ai-sdk/openai-compatible':
+        specifier: ^3.0.48
+        version: 3.0.48(zod@4.6.5)
       '@fastify/cors':
         specifier: ^10.1.0
         version: 10.1.0
@@ -55,6 +62,9 @@ importers:
       octokit:
         specifier: ^5.0.5
         version: 5.0.5
+      ollama-ai-provider-v2:
+        specifier: ^4.0.1
+        version: 4.0.1(ai@7.0.100(zod@4.6.5))(zod@4.6.5)
       zod:
         specifier: ^4.6.5
         version: 4.6.5
@@ -80,6 +90,9 @@ importers:
       '@ai-sdk/openai':
         specifier: ^4.0.66
         version: 4.0.66(zod@4.6.5)
+      '@ai-sdk/openai-compatible':
+        specifier: ^3.0.48
+        version: 3.0.48(zod@4.6.5)
       adm-zip:
         specifier: ^0.6.1
         version: 0.6.1
@@ -101,6 +114,9 @@ importers:
       octokit:
         specifier: ^5.0.5
         version: 5.0.5
+      ollama-ai-provider-v2:
+        specifier: ^4.0.1
+        version: 4.0.1(ai@7.0.100(zod@4.6.5))(zod@4.6.5)
       zod:
         specifier: ^4.6.5
         version: 4.6.5
@@ -208,6 +224,12 @@ packages:
 
   '@ai-sdk/gateway@4.0.81':
     resolution: {integrity: sha512-9TdKEg2l/qfaK7L4gC1FkrHNBrEXQjZSV3DvkRLCXkOSJTzojmarCn19ROWBbrlHqFVbW7OSOwQqz1n7ku9HQA==}
+    engines: {node: '>=22'}
+    peerDependencies:
+      zod: ^3.25.76 || ^4.1.8
+
+  '@ai-sdk/openai-compatible@3.0.48':
+    resolution: {integrity: sha512-WbalnkqFWBnLOQt0w5Jba4LROZz6nacpm5FXKNiJmcZkPbOju0K/DYFtPal2kLP4DiE9q23T0GIM8Zq6/O73tw==}
     engines: {node: '>=22'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
@@ -2250,6 +2272,13 @@ packages:
     resolution: {integrity: sha512-4+/OFSqOjoyULo7eN7EA97DE0Xydj/PW5aIckxqQIoFjFwqXKuFCvXUJObyJfBF9Khu4RL/jlDRI9FPaMGfPnw==}
     engines: {node: '>= 20'}
 
+  ollama-ai-provider-v2@4.0.1:
+    resolution: {integrity: sha512-JHw/Knt4kOTSwQ0oqorbdgzukK6iE73U3MPUyOuCEBpAQGAzm80CQDwyaXMwF80yFjY21RY9qfzkoLyPFFts/w==}
+    engines: {node: '>=22'}
+    peerDependencies:
+      ai: ^7.0.0
+      zod: ^4.0.16
+
   on-exit-leak-free@2.1.2:
     resolution: {integrity: sha512-0eJJY6hXLGf1udHwfNftBqH+g73EU4B504nZeKpz1sYRKafAghwxEJunB2O7rDZkL4PGfsMVnTXZ2EjibbqcsA==}
     engines: {node: '>=14.0.0'}
@@ -2765,6 +2794,12 @@ snapshots:
       '@ai-sdk/provider': 4.0.14
       '@ai-sdk/provider-utils': 5.0.40(zod@4.6.5)
       '@vercel/oidc': 3.2.0
+      zod: 4.6.5
+
+  '@ai-sdk/openai-compatible@3.0.48(zod@4.6.5)':
+    dependencies:
+      '@ai-sdk/provider': 4.0.14
+      '@ai-sdk/provider-utils': 5.0.40(zod@4.6.5)
       zod: 4.6.5
 
   '@ai-sdk/openai@4.0.66(zod@4.6.5)':
@@ -4326,6 +4361,13 @@ snapshots:
       '@octokit/request-error': 7.1.2
       '@octokit/types': 16.0.0
       '@octokit/webhooks': 14.2.0
+
+  ollama-ai-provider-v2@4.0.1(ai@7.0.100(zod@4.6.5))(zod@4.6.5):
+    dependencies:
+      '@ai-sdk/provider': 4.0.14
+      '@ai-sdk/provider-utils': 5.0.40(zod@4.6.5)
+      ai: 7.0.100(zod@4.6.5)
+      zod: 4.6.5
 
   on-exit-leak-free@2.1.2: {}
 

@@ -1,4 +1,3 @@
-import { generateObject } from "ai";
 import { eq } from "drizzle-orm";
 import type { Db } from "../db/client.js";
 import { nowIso } from "../db/client.js";
@@ -10,6 +9,7 @@ import {
   type QualificationRow,
 } from "../db/schema.js";
 import { gatherContext } from "./context.js";
+import { generateStructured } from "./generate.js";
 import { buildQualifyPrompt, QUALIFY_SYSTEM } from "./prompts.js";
 import { getModel, getModelName } from "./provider.js";
 import { qualificationSchema } from "./schemas.js";
@@ -51,7 +51,7 @@ export async function qualifyFinding(
 
   try {
     const context = await gatherContext(finding, repo, scan);
-    const { object } = await generateObject({
+    const object = await generateStructured({
       model: getModel(),
       schema: qualificationSchema,
       system: QUALIFY_SYSTEM,

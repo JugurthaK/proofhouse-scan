@@ -1,4 +1,4 @@
-import { getConfig, openDb, qualifyFinding } from "@proofhouse-scan/core";
+import { getConfig, getModelName, openDb, qualifyFinding } from "@proofhouse-scan/core";
 import type { Command } from "commander";
 
 export function registerQualifyCommand(program: Command): void {
@@ -9,7 +9,7 @@ export function registerQualifyCommand(program: Command): void {
     .action(async (findingId: string) => {
       const config = getConfig();
       const db = openDb(config.dbPath);
-      console.log(`Qualifying finding ${findingId} with ${config.LLM_PROVIDER}/${config.LLM_MODEL}...`);
+      console.log(`Qualifying finding ${findingId} with ${getModelName()}...`);
       const result = await qualifyFinding(db, Number(findingId));
       console.log(`\nVerdict:    ${result.verdict}`);
       console.log(`Confidence: ${result.confidence}`);

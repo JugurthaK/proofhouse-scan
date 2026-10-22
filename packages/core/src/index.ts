@@ -14,6 +14,7 @@ export * from "./scan/run-scan.js";
 export * from "./scan/reconcile.js";
 export * from "./scan/ingest.js";
 export * from "./llm/provider.js";
+export * from "./llm/generate.js";
 export * from "./llm/schemas.js";
 export * from "./llm/context.js";
 export * from "./llm/qualify.js";

@@ -13,10 +13,16 @@ const envSchema = z.object({
   PROOFHOUSE_SCAN_REPO: z
     .string()
     .regex(/^[^/]+\/[^/]+$/, "PROOFHOUSE_SCAN_REPO must be owner/repo"),
-  LLM_PROVIDER: z.enum(["anthropic", "openai"]).default("anthropic"),
-  LLM_MODEL: z.string().default("claude-opus-5"),
+  LLM_PROVIDER: z
+    .enum(["anthropic", "openai", "ollama", "openai-compatible"])
+    .default("anthropic"),
+  LLM_MODEL: z.string().optional(),
   ANTHROPIC_API_KEY: z.string().optional(),
   OPENAI_API_KEY: z.string().optional(),
+  // ollama / openai-compatible only
+  LLM_BASE_URL: z.string().optional(),
+  LLM_API_KEY: z.string().optional(),
+  LLM_NUM_CTX: z.coerce.number().int().positive().default(32768),
   PROOFHOUSE_SCAN_DB_PATH: z.string().default("~/.proofhouse-scan/proofhouse-scan.db"),
   PORT: z.coerce.number().int().positive().default(8790),
   HOST: z.string().default("127.0.0.1"),

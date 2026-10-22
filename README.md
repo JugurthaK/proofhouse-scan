@@ -62,7 +62,8 @@ Prereqs: Node 22+, pnpm, a GitHub account.
 3. **Configure `.env`** (copy `.env.example`):
    - `GITHUB_TOKEN` — classic PAT with `repo` + `workflow` scopes
    - `PROOFHOUSE_SCAN_REPO` — `<you>/proofhouse-scan` (where scan.yml lives)
-   - `LLM_PROVIDER` / `LLM_MODEL` — default `anthropic` / `claude-opus-5`
+   - `LLM_PROVIDER` / `LLM_MODEL` — default `anthropic` / `claude-opus-5`;
+     open and self-hosted models are supported too (see [LLM providers](#llm-providers))
    - `ANTHROPIC_API_KEY` (or `OPENAI_API_KEY` with `LLM_PROVIDER=openai`)
 
 4. **(Private targets only)** add a repo secret `TARGET_REPO_TOKEN` in the
@@ -83,6 +84,38 @@ pnpm proofhouse-scan remediate <finding-id> # generates a fix and opens a PR
 
 For development: `pnpm --filter @proofhouse-scan/server dev` (API) and
 `pnpm --filter @proofhouse-scan/web dev` (frontend with proxy) in two terminals.
+
+## LLM providers
+
+Triage and remediation use one model, chosen in `.env` (restart to switch).
+Each qualification/remediation records the `provider/model` that produced it.
+
+| `LLM_PROVIDER` | Also set | Notes |
+|---|---|---|
+| `anthropic` (default) | `ANTHROPIC_API_KEY` | `LLM_MODEL` defaults to `claude-opus-5` |
+| `openai` | `OPENAI_API_KEY`, `LLM_MODEL` | |
+| `ollama` | `LLM_MODEL` (e.g. `qwen3-coder:30b`) | `LLM_BASE_URL` defaults to `http://127.0.0.1:11434` |
+| `openai-compatible` | `LLM_BASE_URL`, `LLM_MODEL`, `LLM_API_KEY` if needed | LM Studio, vLLM, llama.cpp, OpenRouter, Groq, Together, ... |
+
+```sh
+# Local open model
+LLM_PROVIDER=ollama LLM_MODEL=qwen3-coder:30b pnpm proofhouse-scan qualify 42
+```
+
+- **Context window (Ollama):** Ollama's default is small and it silently
+  truncates the prompt. proofhouse-scan requests `LLM_NUM_CTX=32768` tokens per
+  call; remediation sends and returns whole files, so raise it for large files
+  (memory use grows with it). Other servers — including Ollama's own `/v1`
+  endpoint, so prefer `ollama` for Ollama — set context length server-side.
+- **Docker:** inside the container `127.0.0.1` is the container itself — point
+  `LLM_BASE_URL` at `http://host.docker.internal:11434` (or the Ollama host).
+- **Structured output:** responses must match a JSON schema. The schema is sent
+  to the server (Ollama `format`, OpenAI-style `json_schema`); when a model still
+  gets it wrong, it is retried once with the validation error, and servers that
+  reject `json_schema` get a plain-text attempt with the schema in the prompt.
+- **Model size:** small (≤8B) models produce valid JSON but often unreliable
+  verdicts and fixes. Prefer ~30B+ coding models for triage, and review PRs
+  carefully either way.
 
 ## Scan from your own CI (composite action)
 
