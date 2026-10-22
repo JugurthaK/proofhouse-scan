@@ -31,7 +31,8 @@ proofhouse-scan serve
   qualification & remediation (provider-agnostic via the Vercel AI SDK).
 - **`packages/cli`** — the `proofhouse-scan` command (commander).
 - **`packages/server`** — Fastify API, serves the built web UI.
-- **`packages/web`** — Vite + React frontend (TanStack Query, Recharts).
+- **`packages/web`** — Vite + React frontend (TanStack Query, Recharts), plus
+  `landing.html`, an optional static landing page.
 - **`.github/workflows/scan.yml`** — the scan pipeline. Lives in this repo;
   takes `target_repo` / `target_ref` / `correlation_id` as inputs.
 
@@ -156,6 +157,12 @@ docker run -p 8790:8790 -v proofhouse-scan-data:/data \
   it when no ingest token is set.
 - Leave everything unset for a local, open instance.
 - Health check endpoint: `GET /api/health` (public).
+- **Landing page (optional):** `PROOFHOUSE_SCAN_LANDING=true` serves
+  `packages/web/landing.html` at `/` to signed-out visitors, while signed-in
+  users still get the dashboard at `/` (same origin, no extra domain needed).
+  Requires GitHub sign-in. Its canonical and Open Graph URLs point at
+  `https://proofhouse.subjug.tech`; edit them in `landing.html` for another host.
+  In development, preview it at `http://localhost:5173/landing.html`.
 - Fly.io: `fly launch --no-deploy`, `fly volumes create proofhouse-scan_data`, mount
   it at `/data` in fly.toml (`internal_port = 8790`), then
   `fly secrets set GITHUB_OAUTH_CLIENT_ID=... GITHUB_OAUTH_CLIENT_SECRET=... PROOFHOUSE_SCAN_ALLOWED_USERS=... PROOFHOUSE_SCAN_INGEST_TOKEN=...`.

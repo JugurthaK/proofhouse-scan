@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f5f7fb" />
+    <title>Proofhouse Scan · Security scanning for GitHub with LLM triage</title>
+    <meta
+      name="description"
+      content="Proofhouse Scan runs Opengrep, Trivy and Gitleaks on your GitHub repositories, has an LLM check each finding against the code, and opens fix pull requests for the real ones. Self-hosted."
+    />
+    <link rel="canonical" href="https://proofhouse.subjug.tech/" />
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Proofhouse Scan" />
+    <meta property="og:url" content="https://proofhouse.subjug.tech/" />
+    <meta property="og:title" content="Proofhouse Scan · Scan. Triage. Fix." />
+    <meta
+      property="og:description"
+      content="Security scanning for GitHub repositories with LLM-assisted triage and one-click fix pull requests. Self-hosted."
+    />
+    <meta property="og:image" content="https://proofhouse.subjug.tech/social-preview.png" />
+    <meta property="og:image:width" content="1280" />
+    <meta property="og:image:height" content="640" />
+    <meta property="og:image:alt" content="Proofhouse Scan: security scanning for GitHub repositories with LLM-assisted triage." />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <script type="module" src="/src/landing.ts"></script>
+  </head>
+  <body class="bg-page font-sans text-ink antialiased">
+    <a
+      href="#main"
+      class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-lg focus:bg-surface-1 focus:px-4 focus:py-2 focus:shadow-pop"
+      >Skip to content</a
+    >
+
+    <header data-header class="sticky top-0 z-40 border-b border-transparent bg-page/85 backdrop-blur-md transition-colors">
+      <div class="mx-auto flex h-16 max-w-6xl items-center gap-4 px-4 sm:px-6 md:gap-8">
+        <a href="/" aria-label="Proofhouse Scan, home" class="shrink-0">
+          <img src="/logo.svg" alt="" width="193" height="28" class="h-6 w-auto sm:h-7" />
+        </a>
+        <nav aria-label="Sections" class="hidden items-center gap-1 md:flex">
+          <a href="#how-it-works" class="nav-link">How it works</a>
+          <a href="#features" class="nav-link">Features</a>
+          <a href="#self-host" class="nav-link">Self-host</a>
+        </nav>
+        <div class="ml-auto flex items-center gap-2">
+          <a
+            href="https://github.com/JugurthaK/proofhouse-scan"
+            class="hidden size-9 place-items-center rounded-lg text-ink-2 transition-colors min-[360px]:grid hover:bg-surface-3 hover:text-ink"
+            aria-label="Proofhouse Scan on GitHub"
+          >
+            <svg viewBox="0 0 16 16" aria-hidden="true" class="size-5 fill-current"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z" /></svg>
+          </a>
+          <a href="/api/auth/github/login" class="btn btn-outline h-9 px-3.5">Sign in</a>
+        </div>
+      </div>
+    </header>
+
+    <main id="main">
+      <!-- Hero -->
+      <section class="relative overflow-hidden">
+        <div class="hero-bg" aria-hidden="true"></div>
+        <div class="relative mx-auto grid max-w-6xl grid-cols-1 items-center gap-14 px-4 pt-12 pb-20 sm:px-6 sm:pt-16 lg:grid-cols-[1.05fr_1fr] lg:gap-12 lg:pt-24 lg:pb-28">
+          <div>
+            <p class="kicker">Security scanning for GitHub repositories</p>
+            <h1 class="mt-5 font-display text-[2.75rem] leading-[1.02] font-extrabold tracking-[-0.035em] min-[400px]:text-5xl sm:text-7xl">
+              Scan. Triage.<br />
+              <span class="text-brand-600">Fix.</span>
+            </h1>
+            <p class="mt-6 max-w-xl text-lg leading-relaxed text-ink-2 sm:text-xl sm:leading-relaxed">
+              Proofhouse Scan runs Opengrep, Trivy and Gitleaks on any GitHub repository, has an LLM check every finding
+              against the actual code, and turns the real ones into fix pull requests.
+            </p>
+            <div class="mt-9 flex flex-wrap items-center gap-3">
+              <a href="https://github.com/JugurthaK/proofhouse-scan" class="btn btn-dark h-12 px-5 text-[15px]">
+                <svg viewBox="0 0 16 16" aria-hidden="true" class="size-[18px] fill-current"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z" /></svg>
+                Get it on GitHub
+              </a>
+              <a href="#how-it-works" class="btn btn-ghost h-12 px-4 text-[15px]">
+                See how it works
+                <svg viewBox="0 0 24 24" aria-hidden="true" class="icon size-4"><path d="M12 5v14" /><path d="m19 12-7 7-7-7" /></svg>
+              </a>
+            </div>
+            <ul class="mt-9 flex flex-wrap gap-x-6 gap-y-2 text-sm font-medium text-ink-3">
+              <li class="flex items-center gap-2"><svg viewBox="0 0 24 24" aria-hidden="true" class="icon size-4 text-brand-600"><path d="M20 6 9 17l-5-5" /></svg>Self-hosted</li>
+              <li class="flex items-center gap-2"><svg viewBox="0 0 24 24" aria-hidden="true" class="icon size-4 text-brand-600"><path d="M20 6 9 17l-5-5" /></svg>GitHub-native</li>
+              <li class="flex items-center gap-2"><svg viewBox="0 0 24 24" aria-hidden="true" class="icon size-4 text-brand-600"><path d="M20 6 9 17l-5-5" /></svg>Open-source stack</li>
+            </ul>
+          </div>
+
+          <!-- Hero visual: one finding, triaged and fixed. -->
+          <figure class="relative mx-auto w-full max-w-[540px]">
+            <figcaption class="sr-only">
+              Example: a SQL injection finding judged a true positive by the LLM and fixed in a pull request, next to a
+              look-alike in a test file judged a false positive.
+            </figcaption>
+
+            <div class="card mx-6 -mb-14 scale-[.97] p-4 opacity-80 sm:mx-10" aria-hidden="true">
+              <div class="flex items-center gap-2 text-xs">
+                <span class="sev sev-high"><i></i>High</span>
+                <span class="mono truncate text-ink-3">test/server.test.js:7</span>
+                <span class="verdict verdict-fp ml-auto">False positive</span>
+              </div>
+              <p class="mt-2 text-[13px] text-ink-3">A constant test fixture. It never touches user input.</p>
+              <div class="h-10"></div>
+            </div>
+
+            <div class="card relative p-5 shadow-[0_1px_2px_rgb(15_23_42/.05),0_24px_48px_-20px_rgb(15_23_42/.25)] sm:p-6">
+              <div class="flex flex-wrap items-center gap-2 text-xs">
+                <span class="sev sev-high"><i></i>High</span>
+                <span class="rounded-md bg-surface-2 px-2 py-0.5 font-medium text-ink-2">opengrep</span>
+                <span class="mono text-ink-3">src/server.js:9</span>
+              </div>
+              <p class="mt-3 text-[15px] font-semibold text-ink">SQL injection: user input in a query</p>
+              <pre class="code-inline mt-3"><span class="select-none text-ink-4">9  </span>db.get(<mark>"SELECT * FROM users WHERE id = " + req.params.id</mark>, …)</pre>
+
+              <div class="mt-4 rounded-xl border border-brand-100 bg-brand-50/60 p-4">
+                <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+                  <span class="verdict verdict-tp">True positive</span>
+                  <span class="flex items-center gap-2 text-xs font-medium text-ink-2">
+                    <span class="h-1.5 w-16 overflow-hidden rounded-full bg-brand-100"><span class="block h-full w-[94%] rounded-full bg-brand-600"></span></span>
+                    94% confidence
+                  </span>
+                  <span class="ml-auto flex items-center gap-1.5 text-xs text-ink-3">
+                    <svg viewBox="0 0 24 24" aria-hidden="true" class="icon size-3.5 text-brand-600"><path d="M9.94 15.5A2 2 0 0 0 8.5 14.06l-6.13-1.58a.5.5 0 0 1 0-.96L8.5 9.94A2 2 0 0 0 9.94 8.5l1.58-6.13a.5.5 0 0 1 .96 0l1.58 6.13a2 2 0 0 0 1.44 1.44l6.13 1.58a.5.5 0 0 1 0 .96l-6.13 1.58a2 2 0 0 0-1.44 1.44l-1.58 6.13a.5.5 0 0 1-.96 0z" /></svg>
+                    LLM triage
+                  </span>
+                </div>
+                <p class="mt-2.5 text-sm leading-relaxed text-ink-2">
+                  <code class="mono text-[13px] text-ink">req.params.id</code> flows unsanitized into the SQL string: exploitable via
+                  <code class="mono text-[13px] text-ink">GET /users/:id</code>.
+                </p>
+              </div>
+            </div>
+
+            <div class="card relative -mt-4 ml-6 flex items-center gap-3 p-3.5 sm:ml-14">
+              <span class="grid size-9 shrink-0 place-items-center rounded-lg bg-good-bg text-good">
+                <svg viewBox="0 0 24 24" aria-hidden="true" class="icon size-[18px]"><circle cx="18" cy="18" r="3" /><circle cx="6" cy="6" r="3" /><path d="M13 6h3a2 2 0 0 1 2 2v7" /><path d="M6 9v12" /></svg>
+              </span>
+              <div class="min-w-0">
+                <p class="truncate text-sm font-semibold text-ink">fix(security): parameterize the user query <span class="font-normal text-ink-3">#128</span></p>
+                <p class="mono truncate text-xs text-ink-3">proofhouse-scan/fix-17-a3f9c2e1 → main</p>
+              </div>
+              <span class="ml-auto hidden rounded-full bg-good-bg px-2.5 py-1 text-xs font-semibold text-good sm:inline">Open</span>
+            </div>
+          </figure>
+        </div>
+      </section>
+
+      <!-- The problem -->
+      <section class="relative overflow-hidden bg-navy text-white" aria-labelledby="problem-title">
+        <div data-wall class="wall" aria-hidden="true"></div>
+        <div class="wall-fade" aria-hidden="true"></div>
+        <div class="relative mx-auto max-w-3xl px-4 py-24 text-center sm:px-6 sm:py-32">
+          <p class="kicker kicker-dark justify-center">The problem</p>
+          <h2 id="problem-title" class="mt-5 font-display text-4xl leading-[1.08] font-extrabold tracking-[-0.03em] text-balance sm:text-6xl">
+            Your scanners found 42 issues. <span class="text-brand-300">How many are actually real?</span>
+          </h2>
+          <p class="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-slate-300">
+            Static analysis flags a SQL string in a test fixture. A secret scanner flags the placeholder key in your docs.
+            The real vulnerabilities hide in the noise, and sorting them by hand eats the afternoon.
+          </p>
+        </div>
+      </section>
+
+      <!-- How it works -->
+      <section id="how-it-works" class="scroll-mt-16 py-24 sm:py-32" aria-labelledby="how-title">
+        <div class="mx-auto max-w-6xl px-4 sm:px-6">
+          <div class="max-w-2xl">
+            <p class="kicker">How it works</p>
+            <h2 id="how-title" class="section-title">From raw findings to merged fixes.</h2>
+            <p class="section-sub">
+              Three steps, all driven from one dashboard or the command line. Nothing to install in the repositories you
+              scan.
+            </p>
+          </div>
+
+          <ol class="mt-16 space-y-20 sm:space-y-28">
+            <!-- 1 · Scan -->
+            <li class="grid grid-cols-1 items-center gap-10 lg:grid-cols-2 lg:gap-16">
+              <div>
+                <span class="step-num">1</span>
+                <h3 class="step-title">Scan any GitHub repository.</h3>
+                <p class="step-body">
+                  Point it at <code class="mono text-[15px] text-ink">owner/repo</code>. The scan runs in GitHub Actions with
+                  three proven open-source scanners, and every result lands deduplicated in one database.
+                </p>
+                <ul class="mt-6 space-y-3 text-[15px] text-ink-2">
+                  <li class="flex gap-3"><span class="tick"></span><span><b class="font-semibold text-ink">Opengrep</b> finds vulnerable code patterns (SAST).</span></li>
+                  <li class="flex gap-3"><span class="tick"></span><span><b class="font-semibold text-ink">Trivy</b> checks dependencies for known CVEs and infrastructure-as-code for misconfigurations.</span></li>
+                  <li class="flex gap-3"><span class="tick"></span><span><b class="font-semibold text-ink">Gitleaks</b> hunts for secrets across the full git history, not just the latest commit.</span></li>
+                </ul>
+              </div>
+              <div class="visual-panel" aria-hidden="true">
+                <div class="mx-auto flex max-w-md flex-col items-stretch">
+                  <div class="card flex items-center gap-3 p-3.5">
+                    <span class="grid size-10 shrink-0 place-items-center rounded-lg bg-ink text-white">
+                      <svg viewBox="0 0 16 16" class="size-5 fill-current"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z" /></svg>
+                    </span>
+                    <div class="min-w-0">
+                      <p class="text-sm font-semibold">acme/payments-api</p>
+                      <p class="mono text-xs text-ink-3">main · 3f9c2e1</p>
+                    </div>
+                  </div>
+                  <span class="connector"></span>
+                  <div class="card flex items-center gap-3 p-3.5">
+                    <span class="grid size-10 shrink-0 place-items-center rounded-lg bg-surface-2 text-ink-2">
+                      <svg viewBox="0 0 24 24" class="icon size-5"><circle cx="12" cy="12" r="10" /><path d="m10 8 6 4-6 4z" /></svg>
+                    </span>
+                    <div class="min-w-0">
+                      <p class="text-sm font-semibold">GitHub Actions</p>
+                      <p class="mono truncate text-xs text-ink-3">.github/workflows/scan.yml</p>
+                    </div>
+                  </div>
+                  <span class="connector"></span>
+                  <div class="grid grid-cols-3 gap-2 sm:gap-3">
+                    <div class="card p-3">
+                      <p class="font-display text-2xl font-extrabold tabular-nums">14</p>
+                      <p class="mt-1 text-[13px] font-semibold">Opengrep</p>
+                      <p class="text-[11px] font-semibold tracking-wider text-brand-600 uppercase">SAST</p>
+                    </div>
+                    <div class="card p-3">
+                      <p class="font-display text-2xl font-extrabold tabular-nums">23</p>
+                      <p class="mt-1 text-[13px] font-semibold">Trivy</p>
+                      <p class="text-[11px] font-semibold tracking-wider text-brand-600 uppercase">SCA + IaC</p>
+                    </div>
+                    <div class="card p-3">
+                      <p class="font-display text-2xl font-extrabold tabular-nums">5</p>
+                      <p class="mt-1 text-[13px] font-semibold">Gitleaks</p>
+                      <p class="text-[11px] font-semibold tracking-wider text-brand-600 uppercase">Secrets</p>
+                    </div>
+                  </div>
+                  <span class="connector"></span>
+                  <div class="card flex items-center gap-3 border-brand-200 p-3.5">
+                    <img src="/favicon.svg" alt="" class="size-10 shrink-0 rounded-lg" />
+                    <div class="min-w-0">
+                      <p class="text-sm font-semibold">Findings, deduplicated</p>
+                      <p class="truncate text-xs text-ink-3">SARIF → one SQLite database</p>
+                    </div>
+                    <p class="ml-auto font-display text-3xl font-extrabold text-brand-600 tabular-nums">42</p>
+                  </div>
+                </div>
+              </div>
+            </li>
+
+            <!-- 2 · Triage -->
+            <li class="grid grid-cols-1 items-center gap-10 lg:grid-cols-2 lg:gap-16">
+              <div class="lg:order-2">
+                <span class="step-num">2</span>
+                <h3 class="step-title">Let an LLM sort the real from the noise.</h3>
+                <p class="step-body">
+                  One click sends a finding and the code around it to Claude or an OpenAI model. You get a verdict, a
+                  confidence score and the reasoning behind it, plus an exploit scenario for the ones that are real.
+                </p>
+                <ul class="mt-6 space-y-3 text-[15px] text-ink-2">
+                  <li class="flex gap-3"><span class="tick"></span><span>True positive, false positive or needs review: never a silent dismissal.</span></li>
+                  <li class="flex gap-3"><span class="tick"></span><span>Verdicts stick to the finding and survive every re-scan.</span></li>
+                </ul>
+              </div>
+              <div class="visual-panel lg:order-1" aria-hidden="true">
+                <div class="card mx-auto max-w-md divide-y divide-line overflow-hidden">
+                  <div class="p-4">
+                    <div class="flex items-center gap-2 text-xs">
+                      <span class="sev sev-critical"><i></i>Critical</span>
+                      <span class="mono truncate text-ink-3">config/credentials.txt</span>
+                    </div>
+                    <p class="mt-2 text-sm font-semibold">AWS access key in git history</p>
+                    <div class="mt-2.5 flex items-start gap-2.5">
+                      <span class="verdict verdict-tp shrink-0">True positive</span>
+                      <p class="text-[13px] leading-snug text-ink-3">Committed in a9e41c0. Deleting the file didn’t remove it from history: rotate it.</p>
+                    </div>
+                  </div>
+                  <div class="p-4">
+                    <div class="flex items-center gap-2 text-xs">
+                      <span class="sev sev-high"><i></i>High</span>
+                      <span class="mono truncate text-ink-3">test/server.test.js:7</span>
+                    </div>
+                    <p class="mt-2 text-sm font-semibold">SQL injection: user input in a query</p>
+                    <div class="mt-2.5 flex items-start gap-2.5">
+                      <span class="verdict verdict-fp shrink-0">False positive</span>
+                      <p class="text-[13px] leading-snug text-ink-3">A constant test fixture. It never touches user input.</p>
+                    </div>
+                  </div>
+                  <div class="p-4">
+                    <div class="flex items-center gap-2 text-xs">
+                      <span class="sev sev-high"><i></i>High</span>
+                      <span class="mono truncate text-ink-3">lodash@4.17.15</span>
+                    </div>
+                    <p class="mt-2 text-sm font-semibold">CVE-2021-23337: command injection in lodash</p>
+                    <div class="mt-2.5 flex items-start gap-2.5">
+                      <span class="verdict verdict-nr shrink-0">Needs review</span>
+                      <p class="text-[13px] leading-snug text-ink-3">Only reachable through <span class="mono">_.template</span> with untrusted input. Check the two call sites.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </li>
+
+            <!-- 3 · Fix -->
+            <li class="grid grid-cols-1 items-center gap-10 lg:grid-cols-2 lg:gap-16">
+              <div>
+                <span class="step-num">3</span>
+                <h3 class="step-title">Ship the fix as a pull request.</h3>
+                <p class="step-body">
+                  For confirmed issues, the LLM writes a minimal patch. Proofhouse Scan pushes a branch and opens a pull
+                  request on the target repository, from a fork if you don’t have write access. You review, you merge.
+                </p>
+                <ul class="mt-6 space-y-3 text-[15px] text-ink-2">
+                  <li class="flex gap-3"><span class="tick"></span><span>See the diff in the dashboard before anything is pushed.</span></li>
+                  <li class="flex gap-3"><span class="tick"></span><span>Re-scan after merging and the finding moves to resolved.</span></li>
+                </ul>
+              </div>
+              <div class="visual-panel" aria-hidden="true">
+                <div class="mx-auto max-w-lg">
+                  <div class="card overflow-hidden">
+                    <div class="flex items-center justify-between border-b border-line bg-surface-2 px-4 py-2.5 text-xs">
+                      <span class="mono font-medium text-ink-2">src/server.js</span>
+                      <span class="mono font-semibold"><span class="text-good">+1</span> <span class="text-bad">−1</span></span>
+                    </div>
+                    <div class="mono py-2 text-xs leading-6">
+                      <div class="diff-line"><span>8</span><span> </span><span>app.get("/users/:id", (req, res) =&gt; {</span></div>
+                      <div class="diff-line"><span>9</span><span> </span><span>  db.get(</span></div>
+                      <div class="diff-line diff-del"><span>10</span><span>−</span><span>    "SELECT * FROM users WHERE id = <b>" + req.params.id</b>,</span></div>
+                      <div class="diff-line diff-add"><span>10</span><span>+</span><span>    "SELECT * FROM users WHERE id = <b>?", [req.params.id]</b>,</span></div>
+                      <div class="diff-line"><span>11</span><span> </span><span>    (err, row) =&gt; res.json(row)</span></div>
+                      <div class="diff-line"><span>12</span><span> </span><span>  );</span></div>
+                    </div>
+                  </div>
+                  <div class="mt-4 flex items-center gap-2.5 rounded-xl bg-good-bg px-4 py-3 text-sm font-semibold text-good">
+                    <svg viewBox="0 0 24 24" class="icon size-[18px]"><path d="M20 6 9 17l-5-5" /></svg>
+                    Pull request #128 opened on acme/payments-api
+                  </div>
+                </div>
+              </div>
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <!-- Features -->
+      <section id="features" class="scroll-mt-16 border-y border-line bg-surface-1 py-24 sm:py-32" aria-labelledby="features-title">
+        <div class="mx-auto max-w-6xl px-4 sm:px-6">
+          <div class="max-w-2xl">
+            <p class="kicker">And there’s more</p>
+            <h2 id="features-title" class="section-title">Built for how small teams ship.</h2>
+          </div>
+          <div class="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div class="feature">
+              <span class="feature-icon"><svg viewBox="0 0 24 24" aria-hidden="true" class="icon size-5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /><path d="M12 7v5l4 2" /></svg></span>
+              <h3 class="feature-title">Secrets in git history</h3>
+              <p class="feature-body">Gitleaks scans every past commit, so a key deleted last year still turns up.</p>
+            </div>
+            <div class="feature">
+              <span class="feature-icon"><svg viewBox="0 0 24 24" aria-hidden="true" class="icon size-5"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" /><path d="M21 3v5h-5" /><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" /><path d="M8 16H3v5" /></svg></span>
+              <h3 class="feature-title">Smart re-scans</h3>
+              <p class="feature-body">Fingerprinted findings move from new to open to resolved, and reopen if they come back.</p>
+            </div>
+            <div class="feature">
+              <span class="feature-icon"><svg viewBox="0 0 24 24" aria-hidden="true" class="icon size-5"><circle cx="12" cy="12" r="10" /><path d="m10 8 6 4-6 4z" /></svg></span>
+              <h3 class="feature-title">Runs in your CI</h3>
+              <p class="feature-body">A drop-in GitHub Action scans on every push and sends results to your instance.</p>
+            </div>
+            <div class="feature">
+              <span class="feature-icon"><svg viewBox="0 0 24 24" aria-hidden="true" class="icon size-5"><path d="M7.86 2h8.28L22 7.86v8.28L16.14 22H7.86L2 16.14V7.86z" /><path d="M12 8v4" /><path d="M12 16h.01" /></svg></span>
+              <h3 class="feature-title">Quality gate</h3>
+              <p class="feature-body">Fail the build when a push adds new findings at or above the severity you choose.</p>
+            </div>
+            <div class="feature">
+              <span class="feature-icon"><svg viewBox="0 0 24 24" aria-hidden="true" class="icon size-5"><rect width="18" height="11" x="3" y="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg></span>
+              <h3 class="feature-title">GitHub sign-in</h3>
+              <p class="feature-body">Restrict the dashboard to an allowlist of GitHub users or organizations.</p>
+            </div>
+            <div class="feature">
+              <span class="feature-icon"><svg viewBox="0 0 24 24" aria-hidden="true" class="icon size-5"><path d="m4 17 6-6-6-6" /><path d="M12 19h8" /></svg></span>
+              <h3 class="feature-title">CLI and web UI</h3>
+              <p class="feature-body">Script scans and triage from the terminal, or click through dashboards in the browser.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Two ways to scan -->
+      <section class="py-24 sm:py-32" aria-labelledby="modes-title">
+        <div class="mx-auto max-w-6xl px-4 sm:px-6">
+          <div class="max-w-2xl">
+            <p class="kicker">Two ways to scan</p>
+            <h2 id="modes-title" class="section-title">From your terminal, or from your CI.</h2>
+            <p class="section-sub">Pick one per repository. Either way, findings land in the same dashboard.</p>
+          </div>
+          <div class="mt-14 grid gap-6 lg:grid-cols-2">
+            <div class="flex min-w-0 flex-col">
+              <h3 class="text-lg font-semibold">Central dispatch</h3>
+              <p class="mt-1.5 text-[15px] leading-relaxed text-ink-2">
+                The scan workflow lives in your Proofhouse Scan repository. Target repositories stay untouched.
+              </p>
+              <div class="terminal mt-5 flex-1">
+                <div class="terminal-bar">
+                  <i></i><i></i><i></i><span>zsh</span>
+                  <button type="button" class="copy" data-copy="pnpm proofhouse-scan scan acme/payments-api">Copy</button>
+                </div>
+                <pre><code><span class="text-slate-500">$</span> pnpm proofhouse-scan scan acme/payments-api
+<span class="text-slate-400">  Dispatched scan.yml, waiting for the run…</span>
+  <span class="text-emerald-400">✓</span> opengrep: <span class="text-white">14</span> findings
+  <span class="text-emerald-400">✓</span> trivy: <span class="text-white">23</span> findings
+  <span class="text-emerald-400">✓</span> gitleaks: <span class="text-white">5</span> findings
+  <span class="text-white">Findings: 42 new, 42 open total</span></code></pre>
+              </div>
+            </div>
+            <div class="flex min-w-0 flex-col">
+              <h3 class="text-lg font-semibold">GitHub Action</h3>
+              <p class="mt-1.5 text-[15px] leading-relaxed text-ink-2">
+                Run the same scanners on every push and fail the job on new high-severity findings.
+              </p>
+              <div class="terminal mt-5 flex-1">
+                <div class="terminal-bar">
+                  <i></i><i></i><i></i><span>.github/workflows/proofhouse-scan.yml</span>
+                  <button type="button" class="copy" data-copy-from="action-yaml">Copy</button>
+                </div>
+                <pre><code id="action-yaml"><span class="text-slate-500">steps:</span>
+  - uses: actions/checkout@v7
+    with:
+      fetch-depth: 0
+  - uses: <span class="text-brand-300">JugurthaK/proofhouse-scan/action@v1</span>
+    with:
+      api_url: https://your-instance.example.com
+      api_token: ${{ secrets.PROOFHOUSE_SCAN_INGEST_TOKEN }}
+      fail_on: high</code></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Good to know -->
+      <section class="border-t border-line bg-surface-1 py-24 sm:py-32" aria-labelledby="fit-title">
+        <div class="mx-auto max-w-6xl px-4 sm:px-6">
+          <div class="max-w-2xl">
+            <p class="kicker">Good to know</p>
+            <h2 id="fit-title" class="section-title">Is it right for you?</h2>
+            <p class="section-sub">No surprises. Here is what Proofhouse Scan is, and what it isn’t.</p>
+          </div>
+          <div class="mt-14 grid gap-4 sm:grid-cols-2">
+            <div class="fit">
+              <span class="fit-icon"><svg viewBox="0 0 24 24" aria-hidden="true" class="icon size-5"><rect width="20" height="8" x="2" y="2" rx="2" /><rect width="20" height="8" x="2" y="14" rx="2" /><path d="M6 6h.01" /><path d="M6 18h.01" /></svg></span>
+              <div>
+                <h3 class="font-semibold">Self-hosted, not a SaaS</h3>
+                <p class="mt-1 text-[15px] leading-relaxed text-ink-2">You run it: one container and a SQLite file. Your code and findings stay with you.</p>
+              </div>
+            </div>
+            <div class="fit">
+              <span class="fit-icon"><svg viewBox="0 0 24 24" aria-hidden="true" class="icon size-5"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg></span>
+              <div>
+                <h3 class="font-semibold">Made for small teams</h3>
+                <p class="mt-1 text-[15px] leading-relaxed text-ink-2">One instance on one machine, no horizontal scaling. Built for teams shipping their own apps.</p>
+              </div>
+            </div>
+            <div class="fit">
+              <span class="fit-icon"><svg viewBox="0 0 16 16" aria-hidden="true" class="size-5 fill-current"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z" /></svg></span>
+              <div>
+                <h3 class="font-semibold">GitHub only</h3>
+                <p class="mt-1 text-[15px] leading-relaxed text-ink-2">Scans run on GitHub Actions and fixes open as GitHub pull requests. No GitLab or Bitbucket.</p>
+              </div>
+            </div>
+            <div class="fit">
+              <span class="fit-icon"><svg viewBox="0 0 24 24" aria-hidden="true" class="icon size-5"><path d="M2.59 17.41A2 2 0 0 0 2 18.83V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.17a2 2 0 0 0 1.42-.59l.81-.81a6.5 6.5 0 1 0-4-4z" /><circle cx="16.5" cy="7.5" r=".5" fill="currentColor" /></svg></span>
+              <div>
+                <h3 class="font-semibold">Bring your own LLM key</h3>
+                <p class="mt-1 text-[15px] leading-relaxed text-ink-2">Triage and fixes use your own Anthropic or OpenAI account. Scanning works without one.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Self-host CTA -->
+      <section id="self-host" class="scroll-mt-16 bg-navy text-white" aria-labelledby="cta-title">
+        <div class="mx-auto grid max-w-6xl grid-cols-1 items-center gap-12 px-4 py-24 sm:px-6 sm:py-28 lg:grid-cols-[1fr_1.1fr] lg:gap-16">
+          <div>
+            <p class="kicker kicker-dark">Self-host</p>
+            <h2 id="cta-title" class="mt-4 font-display text-4xl leading-[1.08] font-extrabold tracking-[-0.03em] text-balance sm:text-5xl">
+              Up and running in minutes.
+            </h2>
+            <p class="mt-5 max-w-lg text-lg leading-relaxed text-slate-300">
+              Clone, build, scan. Or ship the whole thing as one Docker container with a volume for the database.
+            </p>
+            <div class="mt-9 flex flex-wrap gap-3">
+              <a href="https://github.com/JugurthaK/proofhouse-scan#setup" class="btn h-12 bg-white px-5 text-[15px] text-ink hover:bg-brand-50">
+                <svg viewBox="0 0 24 24" aria-hidden="true" class="icon size-[18px]"><path d="M12 7v14" /><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z" /></svg>
+                Read the setup guide
+              </a>
+              <a href="https://github.com/JugurthaK/proofhouse-scan" class="btn h-12 px-5 text-[15px] text-white ring-1 ring-white/20 ring-inset hover:bg-white/10">
+                View the source
+              </a>
+            </div>
+          </div>
+          <div class="terminal terminal-raised min-w-0">
+            <div class="terminal-bar">
+              <i></i><i></i><i></i><span>~/proofhouse-scan</span>
+              <button type="button" class="copy" data-copy-from="docker-cmd">Copy</button>
+            </div>
+            <pre><code id="docker-cmd">docker build -t proofhouse-scan .
+docker run -p 8790:8790 -v proofhouse-scan-data:/data \
+  -e GITHUB_OAUTH_CLIENT_ID=... \
+  -e GITHUB_OAUTH_CLIENT_SECRET=... \
+  -e PROOFHOUSE_SCAN_ALLOWED_USERS=your-login \
+  proofhouse-scan</code></pre>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="bg-page">
+      <div class="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-12 sm:px-6 md:flex-row md:items-start md:justify-between">
+        <div class="max-w-sm">
+          <img src="/logo.svg" alt="Proofhouse Scan" width="165" height="24" class="h-6 w-auto" />
+          <p class="mt-3 text-sm leading-relaxed text-ink-3">
+            Security scanning for GitHub repositories with LLM-assisted triage. Built on Opengrep, Trivy, Gitleaks, Node.js,
+            Fastify, React and SQLite.
+          </p>
+        </div>
+        <nav aria-label="Footer" class="flex flex-wrap gap-x-8 gap-y-3 text-sm font-medium text-ink-2">
+          <a href="https://github.com/JugurthaK/proofhouse-scan" class="hover:text-ink">GitHub</a>
+          <a href="https://github.com/JugurthaK/proofhouse-scan#setup" class="hover:text-ink">Setup guide</a>
+          <a href="https://github.com/JugurthaK/proofhouse-scan#scan-from-your-own-ci-composite-action" class="hover:text-ink">GitHub Action</a>
+          <a href="/api/auth/github/login" class="hover:text-ink">Sign in</a>
+        </nav>
+      </div>
+    </footer>
+  </body>
+</html>

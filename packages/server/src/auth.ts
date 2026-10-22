@@ -234,6 +234,16 @@ async function findGrant(
   return null;
 }
 
+/** The GitHub user signed in on this request's session cookie, if any. */
+export function sessionUser(
+  request: FastifyRequest,
+  db: Db,
+  config: AuthConfig,
+): SessionUser | null {
+  const token = config.github ? readCookie(request, SESSION_COOKIE) : undefined;
+  return token ? loadSession(db, config, token) : null;
+}
+
 export function registerAuth(app: FastifyInstance, db: Db, config: AuthConfig): void {
   const authEnabled = Boolean(config.github || config.apiToken);
   app.decorateRequest("user", null);
@@ -258,8 +268,7 @@ export function registerAuth(app: FastifyInstance, db: Db, config: AuthConfig): 
     if (!authEnabled) return; // nothing configured: open, for local dev
     if (config.apiToken && tokenMatches(bearer, config.apiToken)) return;
 
-    const token = config.github ? readCookie(request, SESSION_COOKIE) : undefined;
-    const user = token ? loadSession(db, config, token) : null;
+    const user = sessionUser(request, db, config);
     if (!user) return reply.code(401).send({ error: "unauthorized" });
     if (isCrossOrigin(request)) {
       return reply.code(403).send({ error: "cross-origin request rejected" });

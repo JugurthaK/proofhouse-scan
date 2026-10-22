@@ -1,6 +1,6 @@
 import { openDb, sessions, type Db } from "@proofhouse-scan/core";
 import type { FastifyInstance, LightMyRequestResponse } from "fastify";
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -14,6 +14,7 @@ const AUTH_ENV = [
   "GITHUB_OAUTH_CLIENT_SECRET",
   "PROOFHOUSE_SCAN_ALLOWED_USERS",
   "PROOFHOUSE_SCAN_ALLOWED_ORGS",
+  "PROOFHOUSE_SCAN_LANDING",
 ];
 const GITHUB_ENV = {
   GITHUB_OAUTH_CLIENT_ID: "cid",
@@ -382,5 +383,66 @@ describe("GitHub sign-in (org allowlist)", () => {
     expect((await restarted.inject({ url: "/api/auth/me", headers: { cookie } })).statusCode).toBe(
       401,
     );
+  });
+});
+
+describe("landing page", () => {
+  const ALLOWED = { ...GITHUB_ENV, PROOFHOUSE_SCAN_ALLOWED_USERS: "alice" };
+
+  /** A stand-in web build whose two pages are easy to tell apart. */
+  function webDist(): string {
+    const dir = mkdtempSync(join(tmpdir(), "proofhouse-scan-web-"));
+    writeFileSync(join(dir, "index.html"), "<!doctype html><p>app</p>");
+    writeFileSync(join(dir, "landing.html"), "<!doctype html><p>landing</p>");
+    return dir;
+  }
+
+  function appWith(env: Record<string, string>): { app: FastifyInstance; db: Db } {
+    setEnv(env);
+    const db = openDb(tempDbPath());
+    return { app: buildApp(db, { webDist: webDist() }), db };
+  }
+
+  it("shows signed-out visitors the landing page and signed-in users the app", async () => {
+    const { app } = appWith({ ...ALLOWED, PROOFHOUSE_SCAN_LANDING: "true" });
+    const anonymous = await app.inject({ url: "/" });
+    expect(anonymous.statusCode).toBe(200);
+    expect(anonymous.body).toContain("landing");
+    expect(anonymous.headers["cache-control"]).toBe("private, no-cache");
+    expect(anonymous.headers.vary).toContain("Cookie");
+
+    mockGithub({ login: "alice" });
+    const cookie = sessionHeader(await signIn(app));
+    const signedIn = await app.inject({ url: "/", headers: { cookie } });
+    expect(signedIn.body).toContain("app");
+    expect(signedIn.headers["cache-control"]).toBe("private, no-cache");
+  });
+
+  it("treats unknown or expired sessions as signed out", async () => {
+    const { app, db } = appWith({ ...ALLOWED, PROOFHOUSE_SCAN_LANDING: "1" });
+    const bogus = await app.inject({ url: "/", headers: { cookie: "proofhouse_scan_session=nope" } });
+    expect(bogus.body).toContain("landing");
+
+    mockGithub({ login: "alice" });
+    const cookie = sessionHeader(await signIn(app));
+    db.update(sessions).set({ expiresAt: "2000-01-01T00:00:00.000Z" }).run();
+    expect((await app.inject({ url: "/", headers: { cookie } })).body).toContain("landing");
+  });
+
+  it("leaves app routes alone", async () => {
+    const { app } = appWith({ ...ALLOWED, PROOFHOUSE_SCAN_LANDING: "1" });
+    const res = await app.inject({ url: "/findings?severity=high" });
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toContain("app");
+  });
+
+  it("is off unless PROOFHOUSE_SCAN_LANDING is set", async () => {
+    const { app } = appWith(ALLOWED);
+    expect((await app.inject({ url: "/" })).body).toContain("app");
+  });
+
+  it("is off on an open instance, where nobody is signed out", async () => {
+    const { app } = appWith({ PROOFHOUSE_SCAN_LANDING: "1" });
+    expect((await app.inject({ url: "/" })).body).toContain("app");
   });
 });

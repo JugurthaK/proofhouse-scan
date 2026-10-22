@@ -9,8 +9,9 @@ import { byName, formatCount } from "./format";
 
 async function signOut() {
   await api.logout().catch(() => {});
-  // Full reload so no cached query data outlives the session.
-  window.location.assign("/login");
+  // Full reload so no cached query data outlives the session. "/" is the
+  // landing page when enabled, else the app bounces to /login.
+  window.location.assign("/");
 }
 
 function Brand() {

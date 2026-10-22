@@ -87,6 +87,8 @@ export interface LocalConfig {
   githubClientSecret: string | undefined;
   allowedUsers: string[];
   allowedOrgs: string[];
+  /** Serve landing.html at "/" to signed-out visitors (needs GitHub sign-in). */
+  landing: boolean;
 }
 
 /**
@@ -107,5 +109,6 @@ export function getLocalConfig(): LocalConfig {
     githubClientSecret: process.env.GITHUB_OAUTH_CLIENT_SECRET || undefined,
     allowedUsers: parseNameList(process.env.PROOFHOUSE_SCAN_ALLOWED_USERS),
     allowedOrgs: parseNameList(process.env.PROOFHOUSE_SCAN_ALLOWED_ORGS),
+    landing: /^(1|true|yes)$/i.test(process.env.PROOFHOUSE_SCAN_LANDING ?? ""),
   };
 }

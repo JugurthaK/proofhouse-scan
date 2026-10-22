@@ -6,7 +6,7 @@ import { existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createGunzip } from "node:zlib";
-import { registerAuth, resolveAuthConfig } from "./auth.js";
+import { registerAuth, resolveAuthConfig, sessionUser } from "./auth.js";
 import { registerActionRoutes } from "./routes/actions.js";
 import { registerFindingRoutes } from "./routes/findings.js";
 import { registerIngestRoutes } from "./routes/ingest.js";
@@ -24,7 +24,11 @@ function findWebDist(): string | null {
   return candidates.find((c) => existsSync(resolve(c, "index.html"))) ?? null;
 }
 
-export function buildApp(db?: Db): FastifyInstance {
+export function buildApp(
+  db?: Db,
+  // Tests point this at a fixture directory instead of the real build.
+  options: { webDist?: string | null } = {},
+): FastifyInstance {
   const config = getLocalConfig();
   const database = db ?? openDb(config.dbPath);
   // SARIF payloads are large; limit applies to the decompressed body.
@@ -70,9 +74,22 @@ export function buildApp(db?: Db): FastifyInstance {
   registerActionRoutes(app, database);
   registerIngestRoutes(app, database);
 
-  const webDist = findWebDist();
+  const webDist = options.webDist === undefined ? findWebDist() : options.webDist;
   if (webDist) {
     app.register(fastifyStatic, { root: webDist });
+
+    // Optional marketing page at "/": signed-out visitors get landing.html,
+    // signed-in users the app, so both share one origin and URL. Only with
+    // GitHub sign-in, since an open instance has no signed-out visitors.
+    if (config.landing && auth.github && existsSync(resolve(webDist, "landing.html"))) {
+      app.get("/", (request, reply) => {
+        // Same URL, different page per session: keep caches from mixing them.
+        reply.header("cache-control", "private, no-cache").header("vary", "Cookie");
+        const page = sessionUser(request, database, auth) ? "index.html" : "landing.html";
+        return reply.sendFile(page, { cacheControl: false });
+      });
+    }
+
     // SPA fallback: serve index.html for non-API routes.
     app.setNotFoundHandler((request, reply) => {
       if (request.url.startsWith("/api/")) {

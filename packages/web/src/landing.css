@@ -1,0 +1,339 @@
+/* Landing page (landing.html). Only scans the landing sources, so the app's
+   classes don't leak into this bundle (and index.css skips landing.html). */
+@import "tailwindcss" source(none);
+@import "./theme.css";
+@source "../landing.html";
+@source "./landing.ts";
+
+@theme {
+  --font-sans: "Inter Variable", "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Manrope Variable", "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+
+  --color-navy: #0b1220;
+  --color-navy-2: #111a2e;
+  --color-navy-line: #1d2943;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
+  body {
+    font-size: 16px;
+    line-height: 1.5;
+  }
+  :focus-visible {
+    outline: 2px solid var(--brand-500);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+  ::selection {
+    background: var(--brand-100);
+  }
+}
+
+@layer components {
+  .mono,
+  code,
+  pre {
+    font-family: var(--font-mono);
+    font-variant-ligatures: none;
+  }
+
+  /* Lucide-style stroke icons. */
+  .icon {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    flex: none;
+  }
+
+  .nav-link {
+    @apply rounded-lg px-3 py-2 text-sm font-medium text-ink-2 transition-colors hover:bg-surface-3 hover:text-ink;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl font-semibold whitespace-nowrap transition-colors;
+  }
+  .btn-dark {
+    @apply bg-navy text-white shadow-[0_8px_20px_-8px_rgb(11_18_32/.55)] hover:bg-ink;
+  }
+  .btn-outline {
+    @apply rounded-lg border border-line-strong bg-surface-1 text-sm text-ink hover:border-ink-4;
+  }
+  .btn-ghost {
+    @apply text-ink-2 hover:bg-surface-3 hover:text-ink;
+  }
+
+  .kicker {
+    @apply flex items-center gap-3 text-[13px] font-bold tracking-[0.14em] text-brand-600 uppercase;
+  }
+  .kicker::before {
+    content: "";
+    @apply h-[3px] w-6 rounded-full bg-current;
+  }
+  .kicker-dark {
+    @apply text-brand-300;
+  }
+
+  .section-title {
+    @apply mt-4 font-display text-4xl leading-[1.1] font-extrabold tracking-[-0.03em] text-balance sm:text-5xl;
+  }
+  .section-sub {
+    @apply mt-5 text-lg leading-relaxed text-ink-2;
+  }
+
+  .card {
+    @apply rounded-2xl border border-line bg-surface-1 shadow-card;
+  }
+
+  /* Severity pill, same palette as the app's SeverityBadge. */
+  .sev {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap;
+  }
+  .sev i {
+    @apply size-1.5 rounded-full;
+  }
+  .sev-critical {
+    color: var(--sev-critical-ink);
+    background: var(--sev-critical-bg);
+  }
+  .sev-critical i {
+    background: var(--sev-critical);
+  }
+  .sev-high {
+    color: var(--sev-high-ink);
+    background: var(--sev-high-bg);
+  }
+  .sev-high i {
+    background: var(--sev-high);
+  }
+
+  .verdict {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap;
+  }
+  .verdict-tp {
+    @apply bg-bad-bg text-bad;
+  }
+  .verdict-fp {
+    @apply bg-good-bg text-good;
+  }
+  .verdict-nr {
+    @apply bg-warn-bg text-warn;
+  }
+
+  .code-inline {
+    @apply rounded-lg border border-line bg-surface-2 px-3 py-2.5 text-[12.5px] leading-relaxed break-words whitespace-pre-wrap text-ink-2;
+  }
+  .code-inline mark {
+    @apply rounded-sm bg-sev-critical/10 px-0.5 text-bad underline decoration-sev-critical/50 decoration-wavy underline-offset-4;
+  }
+
+  /* How it works */
+  .step-num {
+    @apply grid size-9 place-items-center rounded-full bg-brand-600 font-display text-base font-extrabold text-white;
+  }
+  .step-title {
+    @apply mt-5 font-display text-3xl leading-tight font-extrabold tracking-[-0.025em] text-balance;
+  }
+  .step-body {
+    @apply mt-4 text-[17px] leading-relaxed text-ink-2;
+  }
+  .tick {
+    @apply mt-[9px] size-1.5 shrink-0 rounded-full bg-brand-500;
+  }
+  .visual-panel {
+    @apply rounded-3xl border border-line bg-surface-2 p-4 sm:p-8;
+    background-image: radial-gradient(var(--border-strong) 1px, transparent 1.2px);
+    background-size: 20px 20px;
+  }
+  .connector {
+    @apply mx-auto block h-5 w-px bg-line-strong;
+  }
+
+  /* Lines wrap rather than scroll, so the changed part stays visible on phones. */
+  .diff-line {
+    @apply grid grid-cols-[2.5rem_1.25rem_1fr] pr-4 whitespace-pre-wrap text-ink-2;
+  }
+  .diff-line > span:last-child {
+    overflow-wrap: anywhere;
+  }
+  .diff-line > span:first-child {
+    @apply pr-2 text-right text-ink-4 select-none;
+  }
+  .diff-line > span:nth-child(2) {
+    @apply text-center select-none;
+  }
+  .diff-del {
+    @apply bg-bad-bg;
+  }
+  .diff-add {
+    @apply bg-good-bg;
+  }
+  .diff-del > span:nth-child(2),
+  .diff-del b {
+    @apply font-normal text-bad;
+  }
+  .diff-add > span:nth-child(2),
+  .diff-add b {
+    @apply font-normal text-good;
+  }
+  .diff-del b {
+    @apply rounded-sm bg-sev-critical/10;
+  }
+  .diff-add b {
+    @apply rounded-sm bg-good/10;
+  }
+
+  .feature {
+    @apply rounded-2xl border border-line bg-page/60 p-6 transition-colors hover:border-brand-200 hover:bg-brand-50/40;
+  }
+  .feature-icon {
+    @apply grid size-10 place-items-center rounded-xl bg-brand-50 text-brand-600 ring-1 ring-brand-100;
+  }
+  .feature-title {
+    @apply mt-5 font-semibold text-ink;
+  }
+  .feature-body {
+    @apply mt-1.5 text-[15px] leading-relaxed text-ink-2;
+  }
+
+  .fit {
+    @apply flex gap-4 rounded-2xl border border-line bg-page/60 p-6;
+  }
+  .fit-icon {
+    @apply grid size-10 shrink-0 place-items-center rounded-xl bg-surface-1 text-ink-2 ring-1 ring-line;
+  }
+
+  .terminal {
+    @apply flex flex-col overflow-hidden rounded-2xl bg-navy ring-1 ring-navy-line;
+  }
+  .terminal-raised {
+    @apply shadow-[0_30px_60px_-30px_rgb(0_0_0/.6)] ring-white/10;
+    background: var(--color-navy-2);
+  }
+  .terminal-bar {
+    @apply flex items-center gap-1.5 border-b border-white/5 px-4 py-2.5;
+  }
+  .terminal-bar > i {
+    @apply size-2.5 rounded-full bg-white/15;
+  }
+  .terminal-bar > span {
+    @apply ml-2 min-w-0 font-mono truncate text-xs text-slate-400;
+  }
+  .terminal pre {
+    @apply flex-1 overflow-x-auto px-5 py-4 text-[13px] leading-6 text-slate-300;
+  }
+  .copy {
+    @apply ml-auto rounded-md px-2 py-1 text-xs font-medium text-slate-400 transition-colors hover:bg-white/10 hover:text-white;
+  }
+  .copy[data-copied] {
+    @apply text-emerald-400;
+  }
+}
+
+/* Hero backdrop: dot grid + two soft brand glows (as in the promo). */
+.hero-bg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(640px 460px at 88% -6%, rgb(59 124 246 / 0.2), transparent 70%),
+    radial-gradient(560px 420px at -4% 104%, rgb(147 183 253 / 0.26), transparent 70%);
+}
+.hero-bg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(#cdd5e2 1.2px, transparent 1.4px);
+  background-size: 26px 26px;
+  opacity: 0.7;
+  mask-image: radial-gradient(ellipse 75% 65% at 55% 40%, #000 20%, transparent 85%);
+}
+
+/* "The problem": a slow wall of scanner findings behind the headline. */
+.wall {
+  position: absolute;
+  inset: -60px -20%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transform: rotate(-6deg);
+}
+.wall-row {
+  display: flex;
+  gap: 12px;
+  width: max-content;
+  animation: wall-drift 90s linear infinite;
+}
+.wall-row:nth-child(even) {
+  animation-direction: reverse;
+  animation-duration: 110s;
+}
+@keyframes wall-drift {
+  to {
+    transform: translateX(-50%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wall-row {
+    animation: none;
+  }
+}
+.chip {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--color-navy-2);
+  border: 1px solid var(--color-navy-line);
+  color: #7c89a3;
+  font: 500 13px/1 var(--font-mono);
+  white-space: nowrap;
+}
+.chip b {
+  font: 700 10px/1 var(--font-sans);
+  letter-spacing: 0.08em;
+  padding: 4px 6px;
+  border-radius: 5px;
+}
+.chip .c {
+  background: rgb(244 63 94 / 0.18);
+  color: #fb7185;
+}
+.chip .h {
+  background: rgb(249 115 22 / 0.18);
+  color: #fb923c;
+}
+.chip .m {
+  background: rgb(234 179 8 / 0.16);
+  color: #facc15;
+}
+.chip .l {
+  background: rgb(96 165 250 / 0.18);
+  color: #93c5fd;
+}
+.wall-fade {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse 60% 62% at 50% 50%,
+    rgb(11 18 32 / 0.97) 0,
+    rgb(11 18 32 / 0.86) 55%,
+    rgb(11 18 32 / 0.35) 100%
+  );
+}
+
+/* Sticky header gains a border once the page scrolls. */
+header[data-scrolled] {
+  border-bottom-color: var(--border);
+}
