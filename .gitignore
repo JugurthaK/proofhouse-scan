@@ -8,3 +8,4 @@ dist/
 .DS_Store
 coverage/
 fixtures/proofhouse-scan-fixture/repo/
+promo/
