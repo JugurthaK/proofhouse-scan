@@ -35,6 +35,9 @@ proofhouse-scan serve
   `landing.html`, an optional static landing page.
 - **`.github/workflows/scan.yml`** — the scan pipeline. Lives in this repo;
   takes `target_repo` / `target_ref` / `correlation_id` as inputs.
+- **`action/`** and **`templates/scan.yml`** — scan from the target's own CI:
+  a GitHub composite action and a GitLab CI/CD component, sharing
+  `action/scripts/post.mjs`.
 
 Findings are fingerprinted (SARIF `partialFingerprints` when present, else a
 line-number-independent hash of scanner + rule + path + snippet; package-based
@@ -116,6 +119,52 @@ up with an `action` badge; central-dispatch scans show `dispatch`.
 Caveat: prefer one mode (action OR dispatch) per repo — opengrep's SARIF
 fingerprints can embed the scanned path, which differs between modes, so
 mixing them may double-count the same finding.
+
+## Scan from GitLab CI (CI/CD component)
+
+`templates/scan.yml` is the GitLab counterpart of the composite action: one
+job per scanner (in its upstream image, GitLeaks with full history) and a
+report job that runs the same `action/scripts/post.mjs`. Requires GitLab 18.7+.
+
+```yaml
+# .gitlab-ci.yml in the target project
+include:
+  - component: $CI_SERVER_FQDN/<you>/proofhouse-scan/scan@1.0.0
+    inputs:
+      api_url: https://your-proofhouse-scan.example.com
+      # stage: test                         # default
+      # scanners: opengrep,trivy,gitleaks   # optional subset
+      # fail_on: high    # fail the pipeline on NEW findings >= this severity
+```
+
+Set `PROOFHOUSE_SCAN_TOKEN` as a **masked** CI/CD variable (Settings → CI/CD →
+Variables) to the server's `PROOFHOUSE_SCAN_INGEST_TOKEN`. It is deliberately
+not an input: inputs are interpolated into the pipeline configuration. If you
+also mark it protected, only protected branches report.
+
+Repos ingested from GitLab are stored host-prefixed, e.g.
+`gitlab.com/group/subgroup/project`, so they never collide with a GitHub repo
+of the same name.
+
+**Publishing the component** (once, by the proofhouse-scan maintainer):
+
+1. Push this repo to a GitLab project (e.g. add it as a second remote) and
+   make it **public** — the report job fetches `post.mjs` from it, pinned to
+   the component's commit.
+2. Give the project a description and enable Settings → General →
+   Visibility → **CI/CD Catalog project**.
+3. Push a semver tag (`git tag 1.0.0 && git push gitlab 1.0.0`); the root
+   `.gitlab-ci.yml` creates the release that publishes it to the Catalog.
+
+**Self-managed GitLab:** components can only be included from the same
+instance. Mirror the project into your instance, publish a release there, and
+set the `source_project` input if its path differs from
+`JugurthaK/proofhouse-scan`.
+
+The jobs run in every pipeline the project creates. To scan only some of them
+— e.g. to avoid two ingests per push from branch and merge request pipelines
+— restrict pipelines with your project's `workflow:rules`. Overriding a job's
+`rules` replaces the check that honours the `scanners` input.
 
 ## Hosting the backend
 

@@ -6,6 +6,7 @@ export * from "./sarif/parse.js";
 export * from "./sarif/normalize.js";
 export * from "./sarif/fingerprint.js";
 export * from "./sarif/severity.js";
+export * from "./scm/ref.js";
 export * from "./github/client.js";
 export * from "./github/workflow.js";
 export * from "./github/content.js";

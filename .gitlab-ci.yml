@@ -1,0 +1,17 @@
+# CI for the proofhouse-scan project itself, once mirrored to GitLab — not for
+# target projects (those include templates/scan.yml as a CI/CD component).
+#
+# Pushing a semver tag (e.g. 1.0.0) publishes the component to the CI/CD
+# Catalog. The Catalog only accepts releases created by the `release` keyword.
+workflow:
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^\d+\.\d+\.\d+$/
+
+publish-component:
+  stage: deploy
+  image: registry.gitlab.com/gitlab-org/cli:latest
+  script:
+    - echo "Publishing proofhouse-scan component $CI_COMMIT_TAG"
+  release:
+    tag_name: $CI_COMMIT_TAG
+    description: "proofhouse-scan CI/CD component $CI_COMMIT_TAG"
