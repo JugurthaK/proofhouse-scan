@@ -21,14 +21,16 @@ proofhouse-scan serve
         Qualify → LLM verdict (true/false positive + reasoning)
         Remediate → LLM patch → branch + PR on the target repo
                     (direct push if you have write access, fork fallback otherwise)
+                    — or a merge request on GitLab (Developer role required)
 ```
 
 ## Architecture
 
 - **`packages/core`** — shared library: SQLite schema (drizzle + better-sqlite3),
   SARIF parsing/normalization, finding fingerprinting & re-scan reconciliation,
-  GitHub API (workflow dispatch, artifact download, PR creation), LLM
-  qualification & remediation (provider-agnostic via the Vercel AI SDK).
+  GitHub API (workflow dispatch, artifact download, PR creation), GitLab API
+  (file reads, MR creation) behind `scm/`, LLM qualification & remediation
+  (provider-agnostic via the Vercel AI SDK).
 - **`packages/cli`** — the `proofhouse-scan` command (commander).
 - **`packages/server`** — Fastify API, serves the built web UI.
 - **`packages/web`** — Vite + React frontend (TanStack Query, Recharts), plus
@@ -65,6 +67,9 @@ Prereqs: Node 22+, pnpm, a GitHub account.
 3. **Configure `.env`** (copy `.env.example`):
    - `GITHUB_TOKEN` — classic PAT with `repo` + `workflow` scopes
    - `PROOFHOUSE_SCAN_REPO` — `<you>/proofhouse-scan` (where scan.yml lives)
+   - For GitLab repos: `GITLAB_TOKENS=gitlab.com=glpat-…,git.corp.io=glpat-…`
+     (or `GITLAB_TOKEN` for gitlab.com alone) — `api` scope, Developer role
+     on the targets. The GitHub settings are only needed for GitHub repos.
    - `LLM_PROVIDER` / `LLM_MODEL` — default `anthropic` / `claude-opus-5`
    - `ANTHROPIC_API_KEY` (or `OPENAI_API_KEY` with `LLM_PROVIDER=openai`)
 
@@ -216,8 +221,9 @@ docker run -p 8790:8790 -v proofhouse-scan-data:/data \
   it at `/data` in fly.toml (`internal_port = 8790`), then
   `fly secrets set GITHUB_OAUTH_CLIENT_ID=... GITHUB_OAUTH_CLIENT_SECRET=... PROOFHOUSE_SCAN_ALLOWED_USERS=... PROOFHOUSE_SCAN_INGEST_TOKEN=...`.
 - To use qualify/remediate/rescan on the hosted instance, also set
-  `GITHUB_TOKEN`, `PROOFHOUSE_SCAN_REPO`, and your LLM key there; without them the
-  instance is ingest + dashboard only.
+  `GITHUB_TOKEN`, `PROOFHOUSE_SCAN_REPO` (GitHub repos) and/or `GITLAB_TOKENS`
+  (GitLab repos), and your LLM key there; without them the instance is
+  ingest + dashboard only.
 - SQLite means one machine — do not scale horizontally.
 - Auth config changes require a server restart (env is read at startup).
 
@@ -245,3 +251,6 @@ it becomes `resolved`. Qualifying the test-file finding should yield
 - A leaked-secret fix PR removes the secret from code, but the credential must
   still be rotated — the PR body says so.
 - Fine-grained PATs don't work for the fork-based PR path; use a classic PAT.
+- GitLab fix MRs are pushed directly, so the token's user needs at least the
+  Developer role on the project; there is no fork fallback. A protected
+  `proofhouse-scan/*` branch pattern would also block the push.

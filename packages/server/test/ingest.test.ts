@@ -58,6 +58,9 @@ describe("POST /api/ingest", () => {
       name: "api",
       isPrivate: true,
     });
+    // The UI builds GitLab links from provider + fullName.
+    const list = (await app.inject({ url: "/api/repos" })).json() as { provider: string; fullName: string }[];
+    expect(list).toMatchObject([{ provider: "gitlab", fullName: "gitlab.com/acme/platform/api" }]);
   });
 
   it("keeps accepting GitHub payloads that omit provider", async () => {

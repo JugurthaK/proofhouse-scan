@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
-import { api, type Scan } from "../api";
+import { api, type RepoSummary, type Scan } from "../api";
 import { BarList, repoTrend, severityRows, TrendChart } from "../components/Charts";
 import {
   AlertIcon,
@@ -27,7 +27,7 @@ import {
   TimeAgo,
   usePageTitle,
 } from "../components/ui";
-import { duration, findingsLink, formatCount, github } from "../format";
+import { duration, findingsLink, formatCount, PROVIDER_LABEL, scmLinks } from "../format";
 
 const SCAN_STATUS: Record<Scan["status"], { label: string; cls: string; icon: ReactNode }> = {
   completed: { label: "Completed", cls: "bg-good-bg text-good", icon: <CheckIcon size={12} /> },
@@ -48,7 +48,8 @@ function ScanStatus({ scan }: { scan: Scan }) {
   );
 }
 
-function ScanTable({ scans, repoId, fullName }: { scans: Scan[]; repoId: number; fullName: string }) {
+function ScanTable({ scans, repo }: { scans: Scan[]; repo: RepoSummary }) {
+  const repoId = repo.id;
   const [showAll, setShowAll] = useState(false);
   const shown = showAll ? scans : scans.slice(0, INITIAL_SCANS);
   return (
@@ -95,7 +96,7 @@ function ScanTable({ scans, repoId, fullName }: { scans: Scan[]; repoId: number;
                 <td className="px-3 py-3 align-top">
                   {scan.commitSha ? (
                     <a
-                      href={github.commit(fullName, scan.commitSha)}
+                      href={scmLinks.commit(repo, scan.commitSha)}
                       target="_blank"
                       rel="noreferrer"
                       className="mono text-xs text-ink-2 hover:text-brand-700 hover:underline"
@@ -239,8 +240,8 @@ export default function RepoDetail() {
         }
         actions={
           <>
-            <a href={github.repo(repo.fullName)} target="_blank" rel="noreferrer" className={btn.ghost}>
-              GitHub
+            <a href={scmLinks.repo(repo)} target="_blank" rel="noreferrer" className={btn.ghost}>
+              {PROVIDER_LABEL[repo.provider]}
               <ExternalLinkIcon size={14} />
             </a>
             <Link to={findingsLink(scope)} className={btn.secondary}>
@@ -313,7 +314,7 @@ export default function RepoDetail() {
             Run a scan to see results for this repository.
           </EmptyState>
         ) : (
-          <ScanTable scans={repo.scans} repoId={repo.id} fullName={repo.fullName} />
+          <ScanTable scans={repo.scans} repo={repo} />
         )}
       </Card>
     </div>

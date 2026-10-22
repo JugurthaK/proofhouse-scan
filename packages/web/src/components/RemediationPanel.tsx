@@ -1,20 +1,44 @@
 import type { ReactNode } from "react";
-import type { RemediationRow } from "../api";
+import type { RemediationRow, RepoSummary } from "../api";
 import { AlertIcon, CheckIcon, ExternalLinkIcon, PullRequestIcon, SpinnerIcon } from "./Icons";
 import { PatchViewer } from "./PatchViewer";
 
 const spinner = <SpinnerIcon size={16} className="animate-spin" />;
 
-const STATUS: Record<RemediationRow["status"], { text: string; cls: string; icon: ReactNode }> = {
-  generating: { text: "Generating a fix…", cls: "text-brand-700", icon: spinner },
-  patch_ready: { text: "Patch ready — opening pull request…", cls: "text-brand-700", icon: spinner },
-  branch_pushed: { text: "Branch pushed — opening pull request…", cls: "text-brand-700", icon: spinner },
-  pr_opened: { text: "Pull request opened", cls: "text-good", icon: <CheckIcon size={16} /> },
-  failed: { text: "Remediation failed", cls: "text-bad", icon: <AlertIcon size={16} /> },
-};
+// GitLab calls them merge requests and references them as !42, not #42.
+const CHANGE_REQUEST = {
+  github: { noun: "pull request", title: "Pull request", ref: "#" },
+  gitlab: { noun: "merge request", title: "Merge request", ref: "!" },
+} as const;
+type ChangeRequest = (typeof CHANGE_REQUEST)[keyof typeof CHANGE_REQUEST];
 
-export function RemediationPanel({ remediation }: { remediation: RemediationRow }) {
-  const status = STATUS[remediation.status];
+function statusFor(
+  status: RemediationRow["status"],
+  cr: ChangeRequest,
+): { text: string; cls: string; icon: ReactNode } {
+  switch (status) {
+    case "generating":
+      return { text: "Generating a fix…", cls: "text-brand-700", icon: spinner };
+    case "patch_ready":
+      return { text: `Patch ready — opening ${cr.noun}…`, cls: "text-brand-700", icon: spinner };
+    case "branch_pushed":
+      return { text: `Branch pushed — opening ${cr.noun}…`, cls: "text-brand-700", icon: spinner };
+    case "pr_opened":
+      return { text: `${cr.title} opened`, cls: "text-good", icon: <CheckIcon size={16} /> };
+    case "failed":
+      return { text: "Remediation failed", cls: "text-bad", icon: <AlertIcon size={16} /> };
+  }
+}
+
+export function RemediationPanel({
+  remediation,
+  provider,
+}: {
+  remediation: RemediationRow;
+  provider: RepoSummary["provider"];
+}) {
+  const changeRequest = CHANGE_REQUEST[provider];
+  const status = statusFor(remediation.status, changeRequest);
   return (
     <div className="space-y-4 text-sm">
       <div className="flex flex-wrap items-center gap-3">
@@ -35,7 +59,8 @@ export function RemediationPanel({ remediation }: { remediation: RemediationRow 
           <PullRequestIcon size={18} className="text-good" />
           <span className="min-w-0 flex-1">
             <span className="block font-medium text-ink">
-              Pull request{remediation.prNumber ? ` #${remediation.prNumber}` : ""}
+              {changeRequest.title}
+              {remediation.prNumber ? ` ${changeRequest.ref}${remediation.prNumber}` : ""}
             </span>
             <span className="block truncate text-xs text-ink-3">
               {remediation.branchName}

@@ -17,6 +17,7 @@ const SUMMARY = {
 
 const REPO_FIELDS = {
   id: repos.id,
+  provider: repos.provider,
   owner: repos.owner,
   name: repos.name,
   fullName: repos.fullName,

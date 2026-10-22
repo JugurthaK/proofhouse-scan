@@ -6,6 +6,9 @@ let cached: Octokit | null = null;
 export function getOctokit(): Octokit {
   if (cached) return cached;
   const { GITHUB_TOKEN } = getConfig();
+  if (!GITHUB_TOKEN) {
+    throw new Error("GITHUB_TOKEN is required for GitHub repos (see .env.example)");
+  }
   cached = new Octokit({ auth: GITHUB_TOKEN });
   return cached;
 }

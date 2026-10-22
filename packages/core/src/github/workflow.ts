@@ -1,6 +1,6 @@
 import AdmZip from "adm-zip";
 import { randomUUID } from "node:crypto";
-import { getConfig } from "../config.js";
+import { getGithubScanRepo } from "../config.js";
 import { getOctokit } from "./client.js";
 
 const WORKFLOW_FILE = "scan.yml";
@@ -31,7 +31,7 @@ export async function dispatchScan(options: {
   onProgress?: (msg: string) => void;
 }): Promise<DispatchedRun> {
   const octokit = getOctokit();
-  const { proofhouseScanOwner, proofhouseScanRepo } = getConfig();
+  const { owner: proofhouseScanOwner, repo: proofhouseScanRepo } = getGithubScanRepo();
   const correlationId = randomUUID();
   const progress = options.onProgress ?? (() => {});
 
@@ -85,7 +85,7 @@ export async function waitForRun(
   options: { timeoutMs?: number; onProgress?: (msg: string) => void } = {},
 ): Promise<CompletedRun> {
   const octokit = getOctokit();
-  const { proofhouseScanOwner, proofhouseScanRepo } = getConfig();
+  const { owner: proofhouseScanOwner, repo: proofhouseScanRepo } = getGithubScanRepo();
   const timeoutMs = options.timeoutMs ?? 30 * 60 * 1000;
   const progress = options.onProgress ?? (() => {});
   const deadline = Date.now() + timeoutMs;
@@ -115,7 +115,7 @@ export async function waitForRun(
  */
 export async function downloadArtifacts(runId: number): Promise<ArtifactContents> {
   const octokit = getOctokit();
-  const { proofhouseScanOwner, proofhouseScanRepo } = getConfig();
+  const { owner: proofhouseScanOwner, repo: proofhouseScanRepo } = getGithubScanRepo();
 
   let artifacts: { id: number; name: string }[] = [];
   for (let attempt = 0; attempt < 6; attempt++) {

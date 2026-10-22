@@ -11,6 +11,7 @@ export type Qualification =
 
 export interface RepoSummary {
   id: number;
+  provider: "github" | "gitlab";
   owner: string;
   name: string;
   fullName: string;
