@@ -12,10 +12,10 @@ function parseTimeout(value: string): number {
 export function registerScanCommand(program: Command): void {
   program
     .command("scan")
-    .description("Dispatch the scan workflow for a repo and ingest its findings")
-    .argument("<repo>", "target repository as owner/repo")
+    .description("Dispatch a central scan (GitHub workflow or GitLab pipeline) and ingest its findings")
+    .argument("<repo>", "owner/repo (GitHub) or host/group/project (GitLab)")
     .option("--ref <ref>", "branch, tag, or commit to scan (default: default branch)")
-    .option("--timeout <duration>", "max wait for the workflow run", "30m")
+    .option("--timeout <duration>", "max wait for the workflow run or pipeline", "30m")
     .action(async (repo: string, options: { ref?: string; timeout: string }) => {
       const config = getConfig();
       const db = openDb(config.dbPath);

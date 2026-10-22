@@ -1,0 +1,131 @@
+# proofhouse-scan GitLab CI/CD component — the GitLab counterpart of
+# action/action.yml. Runs Opengrep (SAST), Trivy (SCA + IaC) and GitLeaks
+# (secrets, full git history) on the project, then sends the SARIF results to
+# a proofhouse-scan backend. Requires GitLab 18.7+ (component context).
+#
+#   include:
+#     - component: $CI_SERVER_FQDN/<path>/proofhouse-scan/scan@<version>
+#       inputs:
+#         api_url: https://proofhouse-scan.example.com
+#
+# Set PROOFHOUSE_SCAN_TOKEN as a masked CI/CD variable (Settings → CI/CD →
+# Variables). It is read from the environment, never passed as an input,
+# because inputs are interpolated into the pipeline configuration.
+spec:
+  component: [sha]
+  inputs:
+    api_url:
+      description: "Base URL of your proofhouse-scan backend, e.g. https://proofhouse-scan.example.com"
+    stage:
+      description: "Stage the scan jobs run in"
+      default: test
+    scanners:
+      description: "Comma-separated subset of: opengrep,trivy,gitleaks"
+      default: "opengrep,trivy,gitleaks"
+      regex: ^\s*(opengrep|trivy|gitleaks)(\s*,\s*(opengrep|trivy|gitleaks))*\s*$
+    fail_on:
+      description: "Fail the report job if this scan introduces NEW findings at or above this severity (critical|high|medium|low). Empty = never fail."
+      default: ""
+      regex: ^(critical|high|medium|low)?$
+    source_project:
+      description: "Path of the project hosting this component on this instance. The report job fetches its script from there at the component's commit — change it when using a mirror."
+      default: JugurthaK/proofhouse-scan
+---
+.proofhouse-scan:
+  stage: $[[ inputs.stage ]]
+  variables:
+    PROOFHOUSE_SCAN_SCANNERS: "$[[ inputs.scanners ]]"
+    # Artifacts must live inside the project directory.
+    PROOFHOUSE_SCAN_SARIF_DIR: "$CI_PROJECT_DIR/.proofhouse-scan"
+
+proofhouse-scan:opengrep:
+  extends: .proofhouse-scan
+  image: buildpack-deps:bookworm-curl # the opengrep installer needs bash + curl
+  rules:
+    - if: $PROOFHOUSE_SCAN_SCANNERS =~ /opengrep/
+  script:
+    - |
+      curl -fsSL https://raw.githubusercontent.com/opengrep/opengrep/main/install.sh | bash
+      export PATH="$HOME/.opengrep/cli/latest:$PATH"
+      mkdir -p "$PROOFHOUSE_SCAN_SARIF_DIR"
+      opengrep scan --config auto --sarif --output "$PROOFHOUSE_SCAN_SARIF_DIR/opengrep.sarif" . || true
+      # Guarantee a valid SARIF artifact even if the scan crashed
+      [ -s "$PROOFHOUSE_SCAN_SARIF_DIR/opengrep.sarif" ] || echo '{"version":"2.1.0","runs":[]}' > "$PROOFHOUSE_SCAN_SARIF_DIR/opengrep.sarif"
+  artifacts:
+    paths: [.proofhouse-scan/opengrep.sarif]
+    expire_in: 1 day
+    access: developer # SARIF can hold secrets; the report job still gets it
+
+proofhouse-scan:trivy:
+  extends: .proofhouse-scan
+  image:
+    name: aquasec/trivy:0.70.0 # same version as the GitHub action's trivy-action
+    entrypoint: [""]
+  rules:
+    - if: $PROOFHOUSE_SCAN_SCANNERS =~ /trivy/
+  variables:
+    TRIVY_CACHE_DIR: .trivycache
+  cache:
+    key: proofhouse-scan-trivy
+    paths: [.trivycache/]
+  script:
+    - mkdir -p "$PROOFHOUSE_SCAN_SARIF_DIR"
+    - >-
+      trivy fs --scanners vuln,misconfig --format sarif --exit-code 0
+      --skip-dirs .trivycache --skip-dirs .proofhouse-scan
+      --output "$PROOFHOUSE_SCAN_SARIF_DIR/trivy.sarif" .
+  artifacts:
+    paths: [.proofhouse-scan/trivy.sarif]
+    expire_in: 1 day
+    access: developer # SARIF can hold secrets; the report job still gets it
+
+proofhouse-scan:gitleaks:
+  extends: .proofhouse-scan
+  image:
+    name: ghcr.io/gitleaks/gitleaks:v8.21.2
+    entrypoint: [""]
+  rules:
+    - if: $PROOFHOUSE_SCAN_SCANNERS =~ /gitleaks/
+  variables:
+    GIT_DEPTH: "0" # full history so GitLeaks can scan past commits
+  script:
+    - |
+      if [ "$(git rev-parse --is-shallow-repository)" = "true" ]; then
+        echo "WARNING: shallow clone — fetching full history for GitLeaks"
+        git fetch --unshallow --quiet || echo "WARNING: could not unshallow; only fetched commits are scanned"
+      fi
+      mkdir -p "$PROOFHOUSE_SCAN_SARIF_DIR"
+      gitleaks detect --source . --report-format sarif --report-path "$PROOFHOUSE_SCAN_SARIF_DIR/gitleaks.sarif" --exit-code 0
+      [ -s "$PROOFHOUSE_SCAN_SARIF_DIR/gitleaks.sarif" ] || echo '{"version":"2.1.0","runs":[]}' > "$PROOFHOUSE_SCAN_SARIF_DIR/gitleaks.sarif"
+  artifacts:
+    paths: [.proofhouse-scan/gitleaks.sarif]
+    expire_in: 1 day
+    access: developer # SARIF can hold secrets; the report job still gets it
+
+proofhouse-scan:report:
+  extends: .proofhouse-scan
+  image: node:22-alpine
+  needs:
+    - job: proofhouse-scan:opengrep
+      optional: true
+    - job: proofhouse-scan:trivy
+      optional: true
+    - job: proofhouse-scan:gitleaks
+      optional: true
+  # One ingest per ref at a time, so overlapping pipelines don't race.
+  resource_group: proofhouse-scan-$CI_COMMIT_REF_SLUG
+  variables:
+    GIT_STRATEGY: none # only the scanners' artifacts are needed
+    PROOFHOUSE_SCAN_API_URL: "$[[ inputs.api_url ]]"
+    PROOFHOUSE_SCAN_FAIL_ON: "$[[ inputs.fail_on ]]"
+    PROOFHOUSE_SCAN_SCRIPT_URL: "https://$CI_SERVER_FQDN/$[[ inputs.source_project ]]/-/raw/$[[ component.sha ]]/action/scripts/post.mjs"
+  script:
+    - |
+      if [ -z "$PROOFHOUSE_SCAN_TOKEN" ]; then
+        echo "ERROR: set PROOFHOUSE_SCAN_TOKEN as a masked CI/CD variable (the backend's PROOFHOUSE_SCAN_INGEST_TOKEN)"
+        exit 1
+      fi
+      # The report script is pinned to the component's own commit.
+      node -e 'fetch(process.argv[1]).then(async (r) => { if (!r.ok) throw new Error(`HTTP ${r.status} fetching ${r.url}`); process.stdout.write(await r.text()); })' \
+        "$PROOFHOUSE_SCAN_SCRIPT_URL" > /tmp/proofhouse-scan-post.mjs
+      node /tmp/proofhouse-scan-post.mjs

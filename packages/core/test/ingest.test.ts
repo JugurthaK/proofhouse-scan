@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { openDb } from "../src/db/client.js";
-import { findings, scans } from "../src/db/schema.js";
+import { findings, repos, scans } from "../src/db/schema.js";
 import { ingestSarifScan } from "../src/scan/ingest.js";
 import { gitleaksSarif, opengrepSarif, trivySarif } from "./fixtures.js";
 
@@ -67,7 +67,8 @@ describe("ingestSarifScan", () => {
   });
 
   it("migrates pre-source databases via ensureColumn", () => {
-    // Simulate a v1 database whose scans table lacks source/ref.
+    // Simulate a v1 database whose scans table lacks source/ref and whose
+    // repos table predates GitLab support (no provider column).
     const dbPath = tempDbPath();
     const raw = new Database(dbPath);
     raw.exec(`
@@ -79,6 +80,8 @@ describe("ingestSarifScan", () => {
         correlation_id TEXT NOT NULL, commit_sha TEXT,
         status TEXT NOT NULL, started_at TEXT NOT NULL, finished_at TEXT, error TEXT,
         counts_new INTEGER, counts_resolved INTEGER, counts_open INTEGER);
+      INSERT INTO repos (owner, name, full_name, created_at)
+        VALUES ('acme', 'old', 'acme/old', '2026-01-01T00:00:00Z');
     `);
     raw.close();
 
@@ -88,5 +91,45 @@ describe("ingestSarifScan", () => {
     );
     expect(cols).toContain("source");
     expect(cols).toContain("ref");
+    expect(db.select().from(repos).get()?.provider).toBe("github");
+  });
+});
+
+describe("ingestSarifScan from GitLab", () => {
+  it("stores nested GitLab paths host-prefixed, apart from same-named GitHub repos", () => {
+    const db = openDb(tempDbPath());
+    ingestSarifScan(db, { repo: "acme/api", sarif: { opengrep: opengrepSarif } });
+    ingestSarifScan(db, {
+      repo: "gitlab.com/acme/api",
+      provider: "gitlab",
+      sarif: { opengrep: opengrepSarif },
+    });
+    const summary = ingestSarifScan(db, {
+      repo: "git.corp.io/platform/backend/api",
+      provider: "gitlab",
+      isPrivate: true,
+      defaultBranch: "develop",
+      sarif: { opengrep: opengrepSarif },
+    });
+    expect(summary.counts.new).toBe(1);
+
+    const rows = db.select().from(repos).all();
+    expect(rows.map((r) => [r.provider, r.fullName, r.owner, r.name])).toEqual([
+      ["github", "acme/api", "acme", "api"],
+      ["gitlab", "gitlab.com/acme/api", "acme", "api"],
+      ["gitlab", "git.corp.io/platform/backend/api", "platform/backend", "api"],
+    ]);
+    expect(rows[2]).toMatchObject({ isPrivate: true, defaultBranch: "develop" });
+  });
+
+  it("rejects a GitLab payload without a host", () => {
+    const db = openDb(tempDbPath());
+    expect(() =>
+      ingestSarifScan(db, {
+        repo: "acme/api",
+        provider: "gitlab",
+        sarif: { opengrep: opengrepSarif },
+      }),
+    ).toThrow(/need their host/);
   });
 });

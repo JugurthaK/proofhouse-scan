@@ -8,7 +8,7 @@ import { ExternalLinkIcon, PullRequestIcon, SparklesIcon, SpinnerIcon } from "..
 import { QualifyPanel } from "../components/QualifyPanel";
 import { RemediationPanel } from "../components/RemediationPanel";
 import { btn, Card, Crumbs, ErrorNote, RepoAvatar, Skeleton, TimeAgo, usePageTitle } from "../components/ui";
-import { CATEGORY_LABEL, github } from "../format";
+import { CATEGORY_LABEL, fixNoun, scmLinks } from "../format";
 
 const REMEDIATION_BUSY = ["generating", "patch_ready", "branch_pushed"];
 
@@ -121,8 +121,9 @@ export default function FindingDetailPage() {
   const canRemediate = isTruePositive && !busy;
   const repo = finding.repo;
   const fileUrl = repo
-    ? github.file(repo.fullName, repo.defaultBranch ?? "HEAD", finding.filePath, finding.startLine, finding.endLine)
+    ? scmLinks.file(repo, repo.defaultBranch ?? "HEAD", finding.filePath, finding.startLine, finding.endLine)
     : null;
+  const fix = fixNoun(repo);
 
   return (
     <div className="space-y-6">
@@ -189,7 +190,7 @@ export default function FindingDetailPage() {
 
           {latestRemed && (
             <Card title="Remediation">
-              <RemediationPanel remediation={latestRemed} />
+              <RemediationPanel remediation={latestRemed} provider={repo?.provider ?? "github"} />
             </Card>
           )}
 
@@ -223,10 +224,10 @@ export default function FindingDetailPage() {
                 ) : (
                   <PullRequestIcon size={15} />
                 )}
-                Create fix PR
+                Create fix {fix}
               </button>
               {!isTruePositive && (
-                <p className="text-xs text-ink-3">Fix PRs are available once triage confirms a true positive.</p>
+                <p className="text-xs text-ink-3">Fix {fix}s are available once triage confirms a true positive.</p>
               )}
             </div>
             {(qualify.error || remediate.error) && (

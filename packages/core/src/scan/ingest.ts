@@ -7,17 +7,21 @@ import {
   repos,
   scans,
   SCANNERS,
+  type Provider,
   type Repo,
   type Scanner,
   type Severity,
 } from "../db/schema.js";
 import { normalizeSarif, type NormalizedFinding } from "../sarif/normalize.js";
 import { parseSarif } from "../sarif/parse.js";
+import { parseRepoRef } from "../scm/ref.js";
 import { reconcileFindings, type ReconcileResult } from "./reconcile.js";
 
 export interface IngestPayload {
-  /** owner/name */
+  /** owner/name (GitHub) or host/group/.../project (GitLab). */
   repo: string;
+  /** Rejects a repo of the other kind; inferred from `repo` when omitted. */
+  provider?: Provider;
   commitSha?: string | null;
   ref?: string | null;
   /** Consumer's workflow run id, stored as scans.workflow_run_id. */
@@ -39,23 +43,18 @@ export interface IngestSummary {
   newBySeverity: Partial<Record<Severity, number>>;
 }
 
-const REPO_RE = /^[^/\s]+\/[^/\s]+$/;
-
 /**
- * Upsert a repos row from payload metadata alone — no GitHub API call, so
- * hosted ingest works without a GITHUB_TOKEN. (Dispatch mode keeps using
+ * Upsert a repos row from payload metadata alone — no GitHub/GitLab API call,
+ * so hosted ingest works without any SCM token. (Dispatch mode keeps using
  * upsertRepo in run-scan.ts, which fetches metadata from GitHub.)
  */
 export function upsertRepoLocal(db: Db, payload: IngestPayload): Repo {
-  if (!REPO_RE.test(payload.repo)) {
-    throw new Error(`Invalid repo "${payload.repo}" — expected owner/repo`);
-  }
-  const [owner, name] = payload.repo.split("/") as [string, string];
+  const ref = parseRepoRef(payload.repo, payload.provider);
 
   const existing = db
     .select()
     .from(repos)
-    .where(eq(repos.fullName, payload.repo))
+    .where(eq(repos.fullName, ref.fullName))
     .get();
   if (existing) {
     const updates: Partial<typeof repos.$inferInsert> = {};
@@ -69,9 +68,10 @@ export function upsertRepoLocal(db: Db, payload: IngestPayload): Repo {
   return db
     .insert(repos)
     .values({
-      owner,
-      name,
-      fullName: payload.repo,
+      provider: ref.provider,
+      owner: ref.owner,
+      name: ref.name,
+      fullName: ref.fullName,
       defaultBranch: payload.defaultBranch ?? null,
       isPrivate: payload.isPrivate ?? false,
       createdAt: nowIso(),

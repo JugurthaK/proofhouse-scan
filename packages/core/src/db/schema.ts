@@ -6,6 +6,9 @@ import {
   uniqueIndex,
 } from "drizzle-orm/sqlite-core";
 
+export const PROVIDERS = ["github", "gitlab"] as const;
+export type Provider = (typeof PROVIDERS)[number];
+
 export const SCANNERS = ["opengrep", "trivy", "gitleaks"] as const;
 export type Scanner = (typeof SCANNERS)[number];
 
@@ -51,8 +54,12 @@ export type RemediationStatus = (typeof REMEDIATION_STATUSES)[number];
 
 export const repos = sqliteTable("repos", {
   id: integer("id").primaryKey({ autoIncrement: true }),
+  provider: text("provider", { enum: PROVIDERS }).notNull().default("github"),
+  // GitHub: owner = login. GitLab: owner = namespace path (group/subgroup).
   owner: text("owner").notNull(),
   name: text("name").notNull(),
+  // owner/name on GitHub; host-prefixed on GitLab (gitlab.com/group/project)
+  // so the same path on both never collides.
   fullName: text("full_name").notNull().unique(),
   defaultBranch: text("default_branch"),
   isPrivate: integer("is_private", { mode: "boolean" }).notNull().default(false),

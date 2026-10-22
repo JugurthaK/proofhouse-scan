@@ -4,7 +4,7 @@ import type { Command } from "commander";
 export function registerRemediateCommand(program: Command): void {
   program
     .command("remediate")
-    .description("Generate a fix for a finding and open a PR on the target repo")
+    .description("Generate a fix for a finding and open a PR (GitHub) or MR (GitLab) on the target repo")
     .argument("<finding-id>", "finding id (see proofhouse-scan list)")
     .action(async (findingId: string) => {
       const config = getConfig();
@@ -13,7 +13,7 @@ export function registerRemediateCommand(program: Command): void {
         onProgress: (msg) => console.log(`  ${msg}`),
       });
       if (result.status === "pr_opened") {
-        console.log(`\nPR opened: ${result.prUrl}`);
+        console.log(`\nFix opened: ${result.prUrl}`);
         if (result.usedFork) console.log(`(via fork ${result.forkFullName})`);
       } else if (result.status === "failed") {
         console.error(`\nRemediation failed: ${result.error}`);

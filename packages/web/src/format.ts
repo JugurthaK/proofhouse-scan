@@ -84,17 +84,34 @@ export function findingsLink(params: Record<string, string> = {}): string {
   return qs ? `/findings?${qs}` : "/findings";
 }
 
-export const github = {
-  repo: (fullName: string) => `https://github.com/${fullName}`,
-  commit: (fullName: string, sha: string) => `https://github.com/${fullName}/commit/${sha}`,
+type ScmRepo = Pick<RepoSummary, "provider" | "fullName">;
+
+export const PROVIDER_LABEL: Record<RepoSummary["provider"], string> = {
+  github: "GitHub",
+  gitlab: "GitLab",
+};
+
+/** "PR" or "MR" — what a fix is called on the repo's host. */
+export const fixNoun = (repo: ScmRepo | null | undefined) =>
+  repo?.provider === "gitlab" ? "MR" : "PR";
+
+// GitLab full names are host-prefixed (gitlab.com/group/project), and its
+// routes sit under /-/ with a single L in line ranges (#L10-20).
+export const scmLinks = {
+  repo: (repo: ScmRepo) =>
+    repo.provider === "gitlab" ? `https://${repo.fullName}` : `https://github.com/${repo.fullName}`,
+  commit: (repo: ScmRepo, sha: string) =>
+    `${scmLinks.repo(repo)}${repo.provider === "gitlab" ? "/-" : ""}/commit/${sha}`,
   file: (
-    fullName: string,
+    repo: ScmRepo,
     ref: string,
     path: string,
     start?: number | null,
     end?: number | null,
   ) => {
-    const anchor = start ? `#L${start}${end && end !== start ? `-L${end}` : ""}` : "";
-    return `https://github.com/${fullName}/blob/${ref}/${path.split("/").map(encodeURIComponent).join("/")}${anchor}`;
+    const gitlab = repo.provider === "gitlab";
+    const range = end && end !== start ? `-${gitlab ? "" : "L"}${end}` : "";
+    const anchor = start ? `#L${start}${range}` : "";
+    return `${scmLinks.repo(repo)}${gitlab ? "/-" : ""}/blob/${ref}/${path.split("/").map(encodeURIComponent).join("/")}${anchor}`;
   },
 };

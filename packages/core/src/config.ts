@@ -8,10 +8,19 @@ import { z } from "zod";
 loadDotenv({ quiet: true });
 loadDotenv({ path: resolve(process.cwd(), "../../.env"), quiet: true });
 
+// GitHub and GitLab credentials are each optional here — a GitLab-only setup
+// needs no GITHUB_TOKEN. They are enforced when a repo of that kind is used.
 const envSchema = z.object({
-  GITHUB_TOKEN: z.string().min(1, "GITHUB_TOKEN is required"),
+  GITHUB_TOKEN: z.string().optional(),
   PROOFHOUSE_SCAN_REPO: z
     .string()
+    .regex(/^[^/]+\/[^/]+$/, "PROOFHOUSE_SCAN_REPO must be owner/repo")
+    .optional(),
+  GITLAB_TOKEN: z.string().optional(),
+  GITLAB_TOKENS: z.string().optional(),
+  GITLAB_SCAN_PROJECTS: z.string().optional(),
+  LLM_PROVIDER: z.enum(["anthropic", "openai"]).default("anthropic"),
+  LLM_MODEL: z.string().default("claude-opus-5"),
     .regex(/^[^/]+\/[^/]+$/, "PROOFHOUSE_SCAN_REPO must be owner/repo"),
   LLM_PROVIDER: z
     .enum(["anthropic", "openai", "ollama", "openai-compatible"])
@@ -34,14 +43,101 @@ const envSchema = z.object({
   PROOFHOUSE_SCAN_ALLOWED_ORGS: z.string().optional(),
 });
 
+export interface GitlabHost {
+  /** API base without /api/v4, e.g. https://gitlab.com */
+  baseUrl: string;
+  token: string;
+}
+
 export type ProofhouseScanConfig = z.infer<typeof envSchema> & {
   dbPath: string;
-  proofhouseScanOwner: string;
-  proofhouseScanRepo: string;
+  /** GitLab instances by lowercased host (with port), from GITLAB_TOKEN(S). */
+  gitlabHosts: Map<string, GitlabHost>;
+  /** Dispatch scan project path by GitLab host, from GITLAB_SCAN_PROJECTS. */
+  gitlabScanProjects: Map<string, string>;
 };
 
 function expandHome(p: string): string {
   return p.startsWith("~/") || p === "~" ? p.replace("~", homedir()) : p;
+}
+
+/**
+ * Parse a comma-separated `host=value` list. The host may be a URL to pick
+ * the scheme (`http://localhost:8080=…`), else https. Errors never echo the
+ * entry: with a missing "=" it could be a token.
+ */
+function parseHostList(
+  list: string | undefined,
+  name: string,
+  example: string,
+  isValid: (value: string) => boolean = () => true,
+): { host: string; origin: string; value: string }[] {
+  const entries = (list ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+  return entries.map((entry, i) => {
+    const eq = entry.indexOf("=");
+    const key = eq > 0 ? entry.slice(0, eq).trim() : "";
+    const value = eq > 0 ? entry.slice(eq + 1).trim() : "";
+    let url: URL | null = null;
+    try {
+      url = new URL(/^https?:\/\//i.test(key) ? key : `https://${key}`);
+    } catch {
+      // reported below
+    }
+    if (!key || !value || !url || url.pathname !== "/" || !isValid(value)) {
+      throw new Error(`Invalid ${name} entry #${i + 1} — expected ${example}`);
+    }
+    return { host: url.host, origin: url.origin, value };
+  });
+}
+
+/**
+ * GITLAB_TOKENS is a comma-separated list of `host=token`, one per GitLab
+ * instance. GITLAB_TOKEN is shorthand for gitlab.com.
+ */
+export function parseGitlabTokens(
+  list: string | undefined,
+  single: string | undefined,
+): Map<string, GitlabHost> {
+  const hosts = new Map<string, GitlabHost>();
+  for (const { host, origin, value } of parseHostList(
+    list,
+    "GITLAB_TOKENS",
+    "host=token, e.g. gitlab.com=glpat-…",
+  )) {
+    hosts.set(host, { baseUrl: origin, token: value });
+  }
+  if (single && !hosts.has("gitlab.com")) {
+    hosts.set("gitlab.com", { baseUrl: "https://gitlab.com", token: single });
+  }
+  return hosts;
+}
+
+/**
+ * GITLAB_SCAN_PROJECTS maps each GitLab host to the project (on that host)
+ * whose .gitlab-ci.yml runs dispatched scans, e.g.
+ * `gitlab.com=you/proofhouse-scan,git.corp.io=security/proofhouse-scan`.
+ */
+export function parseGitlabScanProjects(list: string | undefined): Map<string, string> {
+  return new Map(
+    parseHostList(
+      list,
+      "GITLAB_SCAN_PROJECTS",
+      "host=group/project, e.g. gitlab.com=you/proofhouse-scan",
+      (path) => /^[\w.-]+(\/[\w.-]+)+$/.test(path),
+    ).map(({ host, value }) => [host, value]),
+  );
+}
+
+/** owner/repo of the GitHub repo hosting scan.yml, for dispatch mode. */
+export function getGithubScanRepo(): { owner: string; repo: string } {
+  const { PROOFHOUSE_SCAN_REPO } = getConfig();
+  if (!PROOFHOUSE_SCAN_REPO) {
+    throw new Error(
+      "PROOFHOUSE_SCAN_REPO is required to dispatch GitHub scans (see .env.example)",
+    );
+  }
+  const [owner, repo] = PROOFHOUSE_SCAN_REPO.split("/") as [string, string];
+  return { owner, repo };
 }
 
 let cached: ProofhouseScanConfig | null = null;
@@ -62,15 +158,11 @@ export function getConfig(): ProofhouseScanConfig {
     );
   }
   const env = parsed.data;
-  const [proofhouseScanOwner, proofhouseScanRepo] = env.PROOFHOUSE_SCAN_REPO.split("/") as [
-    string,
-    string,
-  ];
   cached = {
     ...env,
     dbPath: resolve(expandHome(env.PROOFHOUSE_SCAN_DB_PATH)),
-    proofhouseScanOwner,
-    proofhouseScanRepo,
+    gitlabHosts: parseGitlabTokens(env.GITLAB_TOKENS, env.GITLAB_TOKEN),
+    gitlabScanProjects: parseGitlabScanProjects(env.GITLAB_SCAN_PROJECTS),
   };
   return cached;
 }

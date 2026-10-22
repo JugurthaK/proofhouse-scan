@@ -21,20 +21,25 @@ proofhouse-scan serve
         Qualify → LLM verdict (true/false positive + reasoning)
         Remediate → LLM patch → branch + PR on the target repo
                     (direct push if you have write access, fork fallback otherwise)
+                    — or a merge request on GitLab (Developer role required)
 ```
 
 ## Architecture
 
 - **`packages/core`** — shared library: SQLite schema (drizzle + better-sqlite3),
   SARIF parsing/normalization, finding fingerprinting & re-scan reconciliation,
-  GitHub API (workflow dispatch, artifact download, PR creation), LLM
-  qualification & remediation (provider-agnostic via the Vercel AI SDK).
+  GitHub API (workflow dispatch, artifact download, PR creation), GitLab API
+  (file reads, MR creation) behind `scm/`, LLM qualification & remediation
+  (provider-agnostic via the Vercel AI SDK).
 - **`packages/cli`** — the `proofhouse-scan` command (commander).
 - **`packages/server`** — Fastify API, serves the built web UI.
 - **`packages/web`** — Vite + React frontend (TanStack Query, Recharts), plus
   `landing.html`, an optional static landing page.
 - **`.github/workflows/scan.yml`** — the scan pipeline. Lives in this repo;
   takes `target_repo` / `target_ref` / `correlation_id` as inputs.
+- **`action/`** and **`templates/scan.yml`** — scan from the target's own CI:
+  a GitHub composite action and a GitLab CI/CD component, sharing
+  `action/scripts/post.mjs`.
 
 Findings are fingerprinted (SARIF `partialFingerprints` when present, else a
 line-number-independent hash of scanner + rule + path + snippet; package-based
@@ -62,6 +67,10 @@ Prereqs: Node 22+, pnpm, a GitHub account.
 3. **Configure `.env`** (copy `.env.example`):
    - `GITHUB_TOKEN` — classic PAT with `repo` + `workflow` scopes
    - `PROOFHOUSE_SCAN_REPO` — `<you>/proofhouse-scan` (where scan.yml lives)
+   - For GitLab repos: `GITLAB_TOKENS=gitlab.com=glpat-…,git.corp.io=glpat-…`
+     (or `GITLAB_TOKEN` for gitlab.com alone) — `api` scope, Developer role
+     on the targets. The GitHub settings are only needed for GitHub repos.
+   - `LLM_PROVIDER` / `LLM_MODEL` — default `anthropic` / `claude-opus-5`
    - `LLM_PROVIDER` / `LLM_MODEL` — default `anthropic` / `claude-opus-5`;
      open and self-hosted models are supported too (see [LLM providers](#llm-providers))
    - `ANTHROPIC_API_KEY` (or `OPENAI_API_KEY` with `LLM_PROVIDER=openai`)
@@ -69,10 +78,13 @@ Prereqs: Node 22+, pnpm, a GitHub account.
 4. **(Private targets only)** add a repo secret `TARGET_REPO_TOKEN` in the
    proofhouse-scan GitHub repo: a PAT that can read the private target repos.
 
+5. **(GitLab targets)** see [Central scans of GitLab projects](#central-scans-of-gitlab-projects).
+
 ## Usage
 
 ```sh
 pnpm proofhouse-scan scan owner/repo        # dispatch a scan, wait, ingest findings
+pnpm proofhouse-scan scan gitlab.com/group/sub/project   # same, on GitLab
 pnpm proofhouse-scan list --severity high   # query findings from the terminal
 pnpm proofhouse-scan repos                  # scanned repos + open counts
 pnpm proofhouse-scan serve                  # web UI at http://localhost:8790
@@ -85,6 +97,37 @@ pnpm proofhouse-scan remediate <finding-id> # generates a fix and opens a PR
 For development: `pnpm --filter @proofhouse-scan/server dev` (API) and
 `pnpm --filter @proofhouse-scan/web dev` (frontend with proxy) in two terminals.
 
+## Central scans of GitLab projects
+
+The root `.gitlab-ci.yml` is the GitLab counterpart of `scan.yml`. Each GitLab
+instance you scan gets its own copy of this repo — a **scan project** — so
+the runners doing the work sit next to the targets, even behind a firewall.
+
+1. Push this repo to a **private** project on each instance (e.g.
+   `security/proofhouse-scan`). Pushes run nothing; pipelines start only with
+   the inputs set by dispatch. Keep it separate from the public component
+   project on gitlab.com: pipeline names show which targets were scanned, and
+   while artifacts are restricted to Developers (`artifacts:access`), the
+   SARIF they hold — secrets included — should not live in a public project.
+2. Map each host to its scan project, next to the tokens:
+
+   ```sh
+   GITLAB_TOKENS=gitlab.com=glpat-…,git.corp.io=glpat-…
+   GITLAB_SCAN_PROJECTS=gitlab.com=you/proofhouse-scan,git.corp.io=security/proofhouse-scan
+   ```
+
+   The token's user needs the Developer role on the scan project (to run
+   pipelines and read their artifacts).
+3. **Private targets:** in the scan project, add a masked CI/CD variable
+   `TARGET_REPO_TOKEN` with a token that can read them (`read_repository`).
+   Without it the jobs use their job token, which works only for targets that
+   list the scan project in Settings → CI/CD → Job token permissions.
+
+`proofhouse-scan scan gitlab.com/group/project [--ref <branch|tag|sha>]` (or
+**Rescan** in the UI) creates a pipeline with the target as
+[pipeline inputs](https://docs.gitlab.com/ci/inputs/) — GitLab.com blocks
+pipeline variables by default on new projects, and inputs are validated by
+regex before they reach the job scripts. Requires GitLab 18.1+.
 ## LLM providers
 
 Triage and remediation use one model, chosen in `.env` (restart to switch).
@@ -150,6 +193,52 @@ Caveat: prefer one mode (action OR dispatch) per repo — opengrep's SARIF
 fingerprints can embed the scanned path, which differs between modes, so
 mixing them may double-count the same finding.
 
+## Scan from GitLab CI (CI/CD component)
+
+`templates/scan.yml` is the GitLab counterpart of the composite action: one
+job per scanner (in its upstream image, GitLeaks with full history) and a
+report job that runs the same `action/scripts/post.mjs`. Requires GitLab 18.7+.
+
+```yaml
+# .gitlab-ci.yml in the target project
+include:
+  - component: $CI_SERVER_FQDN/<you>/proofhouse-scan/scan@1.0.0
+    inputs:
+      api_url: https://your-proofhouse-scan.example.com
+      # stage: test                         # default
+      # scanners: opengrep,trivy,gitleaks   # optional subset
+      # fail_on: high    # fail the pipeline on NEW findings >= this severity
+```
+
+Set `PROOFHOUSE_SCAN_TOKEN` as a **masked** CI/CD variable (Settings → CI/CD →
+Variables) to the server's `PROOFHOUSE_SCAN_INGEST_TOKEN`. It is deliberately
+not an input: inputs are interpolated into the pipeline configuration. If you
+also mark it protected, only protected branches report.
+
+Repos ingested from GitLab are stored host-prefixed, e.g.
+`gitlab.com/group/subgroup/project`, so they never collide with a GitHub repo
+of the same name.
+
+**Publishing the component** (once, by the proofhouse-scan maintainer):
+
+1. Push this repo to a GitLab project (e.g. add it as a second remote) and
+   make it **public** — the report job fetches `post.mjs` from it, pinned to
+   the component's commit.
+2. Give the project a description and enable Settings → General →
+   Visibility → **CI/CD Catalog project**.
+3. Push a semver tag (`git tag 1.0.0 && git push gitlab 1.0.0`); the root
+   `.gitlab-ci.yml` creates the release that publishes it to the Catalog.
+
+**Self-managed GitLab:** components can only be included from the same
+instance. Mirror the project into your instance, publish a release there, and
+set the `source_project` input if its path differs from
+`JugurthaK/proofhouse-scan`.
+
+The jobs run in every pipeline the project creates. To scan only some of them
+— e.g. to avoid two ingests per push from branch and merge request pipelines
+— restrict pipelines with your project's `workflow:rules`. Overriding a job's
+`rules` replaces the check that honours the `scanners` input.
+
 ## Hosting the backend
 
 The server is a single Node process with a SQLite file — deploy it anywhere
@@ -200,8 +289,9 @@ docker run -p 8790:8790 -v proofhouse-scan-data:/data \
   it at `/data` in fly.toml (`internal_port = 8790`), then
   `fly secrets set GITHUB_OAUTH_CLIENT_ID=... GITHUB_OAUTH_CLIENT_SECRET=... PROOFHOUSE_SCAN_ALLOWED_USERS=... PROOFHOUSE_SCAN_INGEST_TOKEN=...`.
 - To use qualify/remediate/rescan on the hosted instance, also set
-  `GITHUB_TOKEN`, `PROOFHOUSE_SCAN_REPO`, and your LLM key there; without them the
-  instance is ingest + dashboard only.
+  `GITHUB_TOKEN`, `PROOFHOUSE_SCAN_REPO` (GitHub repos) and/or `GITLAB_TOKENS`
+  (GitLab repos), and your LLM key there; without them the instance is
+  ingest + dashboard only.
 - SQLite means one machine — do not scale horizontally.
 - Auth config changes require a server restart (env is read at startup).
 
@@ -229,3 +319,6 @@ it becomes `resolved`. Qualifying the test-file finding should yield
 - A leaked-secret fix PR removes the secret from code, but the credential must
   still be rotated — the PR body says so.
 - Fine-grained PATs don't work for the fork-based PR path; use a classic PAT.
+- GitLab fix MRs are pushed directly, so the token's user needs at least the
+  Developer role on the project; there is no fork fallback. A protected
+  `proofhouse-scan/*` branch pattern would also block the push.

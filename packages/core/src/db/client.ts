@@ -14,6 +14,7 @@ export type Db = BetterSQLite3Database<typeof schema> & {
 const DDL = `
 CREATE TABLE IF NOT EXISTS repos (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
+  provider TEXT NOT NULL DEFAULT 'github' CHECK (provider IN ('github','gitlab')),
   owner TEXT NOT NULL,
   name TEXT NOT NULL,
   full_name TEXT NOT NULL UNIQUE,
@@ -145,6 +146,7 @@ export function openDb(dbPath: string): Db {
   sqlite.exec(DDL);
   ensureColumn(sqlite, "scans", "source", "source TEXT NOT NULL DEFAULT 'dispatch'");
   ensureColumn(sqlite, "scans", "ref", "ref TEXT");
+  ensureColumn(sqlite, "repos", "provider", "provider TEXT NOT NULL DEFAULT 'github'");
   const db = drizzle(sqlite, { schema }) as Db;
   cache.set(dbPath, db);
   return db;

@@ -2,14 +2,15 @@ import { eq } from "drizzle-orm";
 import type { Db } from "../db/client.js";
 import { nowIso } from "../db/client.js";
 import { repos, scans, type Scanner } from "../db/schema.js";
-import { getOctokit, parseRepoSlug } from "../github/client.js";
-import {
-  dispatchScan,
-  downloadArtifacts,
-  waitForRun,
-} from "../github/workflow.js";
 import { normalizeSarif, type NormalizedFinding } from "../sarif/normalize.js";
 import { parseSarif } from "../sarif/parse.js";
+import {
+  dispatchRepoScan,
+  downloadRepoScanArtifacts,
+  fetchRepoMeta,
+  waitForRepoScan,
+} from "../scm/index.js";
+import { parseRepoRef } from "../scm/ref.js";
 import { reconcileFindings, type ReconcileResult } from "./reconcile.js";
 
 const SARIF_ARTIFACTS: Record<string, Scanner> = {
@@ -29,41 +30,36 @@ export interface ScanSummary {
   counts: ReconcileResult;
 }
 
-/** Ensure a repos row exists (fetching metadata from GitHub) and return it. */
+/**
+ * Ensure a repos row exists (fetching metadata from GitHub or GitLab) and
+ * return it. `targetRepo` is owner/repo, or host/group/project for GitLab.
+ */
 export async function upsertRepo(db: Db, targetRepo: string) {
-  const { owner, repo } = parseRepoSlug(targetRepo);
-  const octokit = getOctokit();
-  const { data } = await octokit.rest.repos.get({ owner, repo });
+  const meta = await fetchRepoMeta(parseRepoRef(targetRepo));
 
   const existing = db
     .select()
     .from(repos)
-    .where(eq(repos.fullName, data.full_name))
+    .where(eq(repos.fullName, meta.fullName))
     .get();
   if (existing) {
     db.update(repos)
-      .set({ defaultBranch: data.default_branch, isPrivate: data.private })
+      .set({ defaultBranch: meta.defaultBranch, isPrivate: meta.isPrivate })
       .where(eq(repos.id, existing.id))
       .run();
-    return { ...existing, defaultBranch: data.default_branch };
+    return { ...existing, defaultBranch: meta.defaultBranch };
   }
   return db
     .insert(repos)
-    .values({
-      owner: data.owner.login,
-      name: data.name,
-      fullName: data.full_name,
-      defaultBranch: data.default_branch,
-      isPrivate: data.private,
-      createdAt: nowIso(),
-    })
+    .values({ ...meta, createdAt: nowIso() })
     .returning()
     .get();
 }
 
 /**
- * Full pipeline: dispatch scan.yml → wait → download SARIF artifacts →
- * normalize → reconcile into the database.
+ * Full pipeline: dispatch the scan (GitHub scan.yml, or a GitLab pipeline in
+ * the host's scan project) → wait → download SARIF artifacts → normalize →
+ * reconcile into the database.
  */
 export async function runScan(
   db: Db,
@@ -89,8 +85,7 @@ export async function runScan(
     .get();
 
   try {
-    const run = await dispatchScan({
-      targetRepo: repo.fullName,
+    const run = await dispatchRepoScan(repo, {
       targetRef: options.targetRef,
       onProgress: progress,
     });
@@ -103,13 +98,13 @@ export async function runScan(
       .where(eq(scans.id, scan.id))
       .run();
 
-    const completed = await waitForRun(run, {
+    const completed = await waitForRepoScan(repo, run, {
       timeoutMs: options.timeoutMs,
       onProgress: progress,
     });
     progress(`Run finished with conclusion: ${completed.conclusion}`);
 
-    const artifacts = await downloadArtifacts(run.runId);
+    const artifacts = await downloadRepoScanArtifacts(repo, run);
 
     let commitSha: string | null = null;
     const metaRaw = artifacts["scan-meta"];

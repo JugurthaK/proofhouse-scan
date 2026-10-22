@@ -1,5 +1,5 @@
 import type { Finding, Repo, Scan } from "../db/schema.js";
-import { fetchFileContent } from "../github/content.js";
+import { fetchRepoFile } from "../scm/index.js";
 
 const MAX_LINES = 1500;
 const MAX_BYTES = 60_000;
@@ -58,7 +58,7 @@ export async function gatherContext(
   const files: GatheredContext["files"] = [];
   const sections: string[] = [];
 
-  const mainContent = await fetchFileContent(repo.fullName, finding.filePath, ref);
+  const mainContent = await fetchRepoFile(repo, finding.filePath, ref);
   if (mainContent !== null) {
     const { text, truncated } = annotate(mainContent, finding);
     files.push({ path: finding.filePath, ref: ref ?? null, truncated });
@@ -80,7 +80,7 @@ export async function gatherContext(
       "go.sum",
     ].filter((p) => p !== finding.filePath);
     for (const lockPath of lockCandidates) {
-      const lock = await fetchFileContent(repo.fullName, lockPath, ref);
+      const lock = await fetchRepoFile(repo, lockPath, ref);
       if (lock !== null) {
         const excerpt = lock.length > 8000 ? lock.slice(0, 8000) + "\n[truncated]" : lock;
         files.push({ path: lockPath, ref: ref ?? null, truncated: lock.length > 8000 });
