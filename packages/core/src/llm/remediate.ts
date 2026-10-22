@@ -1,4 +1,3 @@
-import { generateObject } from "ai";
 import { createTwoFilesPatch } from "diff";
 import { desc, eq } from "drizzle-orm";
 import type { Db } from "../db/client.js";
@@ -7,6 +6,7 @@ import { qualifications, remediations, type Remediation } from "../db/schema.js"
 import { fetchFileContent } from "../github/content.js";
 import { createFixPr } from "../github/pr.js";
 import { gatherContext } from "./context.js";
+import { generateStructured } from "./generate.js";
 import { buildRemediatePrompt, REMEDIATE_SYSTEM } from "./prompts.js";
 import { getModel, getModelName } from "./provider.js";
 import { loadFindingBundle } from "./qualify.js";
@@ -58,7 +58,7 @@ export async function remediateFinding(
     const context = await gatherContext(finding, repo, scan);
 
     progress("Generating fix with LLM...");
-    const { object } = await generateObject({
+    const object = await generateStructured({
       model: getModel(),
       schema: remediationSchema,
       system: REMEDIATE_SYSTEM,
