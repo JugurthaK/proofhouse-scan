@@ -11,6 +11,10 @@
   },
   "packageManager": "pnpm@10.34.5",
   "pnpm": {
+    "overrides": {
+      "ollama-ai-provider-v2>@ai-sdk/provider": "4.0.14",
+      "ollama-ai-provider-v2>@ai-sdk/provider-utils": "5.0.40"
+    },
     "onlyBuiltDependencies": [
       "better-sqlite3",
       "esbuild"
